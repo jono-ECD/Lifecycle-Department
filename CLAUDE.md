@@ -9,6 +9,9 @@ The Lifecycle & Retention Department's operating system. Two layers:
 - `clients/` — per-account instances. Strategy, state, output.
   **Never write reusable method here.**
 
+`scripts/` is repo infrastructure, not a third content layer — tooling that keeps
+the two layers consistent.
+
 If you are about to write a file and cannot tell which layer it belongs in, ask:
 *would this be true for a different client?* Yes → `system/`. No → `clients/<slug>/`.
 
@@ -24,6 +27,9 @@ one that resolves `blessed-botanicals` works for all of them.
 
 ## Data access is not uniform — check before promising
 
+<!-- Generated from clients/registry.yml. Do not hand-edit: run scripts/sync_registry.py -->
+
+<!-- BEGIN:generated:access-matrix -->
 | Client | Slug | Klaviyo ID | Verified | Live data |
 |---|---|---|---|---|
 | Blessed Botanicals | `blessed-botanicals` | `RaFbmF` | yes | Klaviyo MCP + Hiro `128074` |
@@ -31,6 +37,7 @@ one that resolves `blessed-botanicals` works for all of them.
 | Something Borrowed Blooms | `something-borrowed-blooms` | `SmTYz2` | **no** | none |
 | Bad Boy Mower Parts | `bad-boy-mower-parts` | `UwjazH` | **no** | none |
 | Lazy Leaf | `lazy-leaf` | `RQeWJs` | yes | Klaviyo MCP |
+<!-- END:generated:access-matrix -->
 
 Three of five accounts have **no connector**. If asked to report on, analyze, or QA
 one of them, say so plainly rather than producing an empty or inferred answer.
@@ -44,6 +51,10 @@ against the API. Do not treat it as fact; flag it if it matters to the task.
   as empty scaffolding.
 - Each `system/` node README carries an asset table. Update it when you add a
   template or skill so the tree reports its own state honestly.
+- Account tables in `clients/README.md`, `CLAUDE.md`, and each client README sit
+  between `<!-- BEGIN:generated:… -->` markers and are **derived from the registry**.
+  Never hand-edit them. Edit `clients/registry.yml`, then run:
+  `python3 scripts/sync_registry.py` (`--check` verifies without writing).
 - Don't duplicate registry data into client folders. One source of truth, or it drifts.
 - Mark unknowns as unknown. A `null` in the registry is more useful than a guess.
 

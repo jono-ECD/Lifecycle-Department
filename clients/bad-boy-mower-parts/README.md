@@ -1,11 +1,13 @@
 # Bad Boy Mower Parts
 
+<!-- BEGIN:generated:client-header -->
 | | |
 |---|---|
 | **Slug** | `bad-boy-mower-parts` |
 | **Klaviyo account** | `UwjazH` (unverified) |
 | **Data access** | **none wired** — see registry |
 | **Registry entry** | [`clients/registry.yml`](../registry.yml) |
+<!-- END:generated:client-header -->
 
 Account identity lives in the registry, not here. This file is the human-facing
 context: what is true about this account right now.

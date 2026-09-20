@@ -1,11 +1,13 @@
 # Lazy Leaf
 
+<!-- BEGIN:generated:client-header -->
 | | |
 |---|---|
 | **Slug** | `lazy-leaf` |
 | **Klaviyo account** | `RQeWJs` (verified) |
 | **Data access** | Klaviyo MCP |
 | **Registry entry** | [`clients/registry.yml`](../registry.yml) |
+<!-- END:generated:client-header -->
 
 Account identity lives in the registry, not here. This file is the human-facing
 context: what is true about this account right now.

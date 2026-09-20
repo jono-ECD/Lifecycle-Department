@@ -1,11 +1,13 @@
 # Blessed Botanicals
 
+<!-- BEGIN:generated:client-header -->
 | | |
 |---|---|
 | **Slug** | `blessed-botanicals` |
 | **Klaviyo account** | `RaFbmF` (verified) |
 | **Data access** | Klaviyo MCP + Hiro (id 128074) |
 | **Registry entry** | [`clients/registry.yml`](../registry.yml) |
+<!-- END:generated:client-header -->
 
 Account identity lives in the registry, not here. This file is the human-facing
 context: what is true about this account right now.

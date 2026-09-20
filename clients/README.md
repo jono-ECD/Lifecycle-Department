@@ -9,6 +9,9 @@ else in this repo should contain a hardcoded account ID.
 
 ## Active accounts
 
+<!-- Generated from registry.yml. Do not hand-edit: run scripts/sync_registry.py -->
+
+<!-- BEGIN:generated:client-index -->
 | Client | Slug | Klaviyo | Verified | Klaviyo MCP | Hiro |
 |---|---|---|---|---|---|
 | [Blessed Botanicals](blessed-botanicals/) | `blessed-botanicals` | `RaFbmF` | ✅ | ✅ | ✅ `128074` |
@@ -16,6 +19,7 @@ else in this repo should contain a hardcoded account ID.
 | [Something Borrowed Blooms](something-borrowed-blooms/) | `something-borrowed-blooms` | `SmTYz2` | ⚠️ | ❌ | ❌ |
 | [Bad Boy Mower Parts](bad-boy-mower-parts/) | `bad-boy-mower-parts` | `UwjazH` | ⚠️ | ❌ | ❌ |
 | [Lazy Leaf](lazy-leaf/) | `lazy-leaf` | `RQeWJs` | ✅ | ✅ | ❌ |
+<!-- END:generated:client-index -->
 
 **Verified** = account ID confirmed against the live Klaviyo API (2026-09-20).
 ⚠️ = supplied by a human, not yet confirmed. Treat as provisional.
@@ -32,6 +36,11 @@ a footnote.
    against the API.
 2. `mkdir clients/<slug>/` and copy the README shape from an existing client.
 3. Wire data access (Klaviyo MCP connector, Hiro) and update the `access:` block.
+4. Run `python3 scripts/sync_registry.py` to propagate to every derived table.
+
+Same for connecting an account later: edit the `access:` block and `verified:` flag
+in the registry, run the script, done. Never edit the tables by hand — the script
+overwrites them.
 
 That is the whole cost of onboarding an account into this system — which is the
 point of separating `system/` from `clients/`.
