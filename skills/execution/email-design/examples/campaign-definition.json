@@ -1,0 +1,512 @@
+{
+  "_comment": [
+    "Worked example for execution.email-design. FICTIONAL BRAND \u2014 'Northfold Tea Co.'",
+    "No real client data. Passes scripts/validate_dnd.py with zero errors.",
+    "Empty `styles` objects are populated from the account's design-tokens.json ->",
+    "klaviyo_definition_styles. They are left empty here so the example stays",
+    "account-agnostic."
+  ],
+  "styles": [
+    {
+      "style_type": "base-styles",
+      "properties": {},
+      "styles": {}
+    },
+    {
+      "style_type": "text-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "link-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "heading-1-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "heading-2-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "heading-3-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "heading-4-styles",
+      "styles": {}
+    },
+    {
+      "style_type": "mobile-styles",
+      "properties": {},
+      "styles": {}
+    }
+  ],
+  "body": {
+    "properties": {},
+    "styles": {
+      "background_color": "#ffffff",
+      "width": 600
+    },
+    "sections": [
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<div>FREE SHIPPING ON ORDERS OVER $40</div>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "image",
+                    "data": {
+                      "properties": {
+                        "dynamic": false,
+                        "alt_text": "Northfold Tea Co.",
+                        "src": "https://cdn.example-tea.test/email/logo.png"
+                      },
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "image",
+                    "data": {
+                      "properties": {
+                        "dynamic": false,
+                        "alt_text": "A glass teapot of amber oolong steeping on a windowsill in morning light",
+                        "src": "https://cdn.example-tea.test/email/hero-oolong.jpg"
+                      },
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<h1>Your morning, slower.</h1>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<p>Hello {{ first_name|default:'there' }} \u2014 our Highland Oolong is back from this spring's harvest. Twelve hours of withering, rolled by hand, and a finish that holds up to four infusions.</p>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "spacer",
+                    "data": {
+                      "display_options": {},
+                      "styles": {
+                        "height": 16
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "button",
+                    "data": {
+                      "content": "SHOP HIGHLAND OOLONG",
+                      "properties": {
+                        "href": "https://www.example-tea.test/products/highland-oolong"
+                      },
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<h2>Why this harvest</h2>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<p><strong>Hand-rolled</strong><br>Leaf kept whole, so it opens slowly.</p>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<h2>What people are saying</h2>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "review",
+                    "data": {
+                      "properties": {
+                        "dynamic": true,
+                        "show_rating": true,
+                        "show_reviewer_name": true
+                      },
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {}
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<h2>Pairs well with</h2>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "product",
+                    "data": {
+                      "properties": {
+                        "dynamic": true,
+                        "show_price": true,
+                        "show_title": true,
+                        "show_button": true
+                      },
+                      "display_options": {},
+                      "styles": {
+                        "num_columns": 2,
+                        "stack_on_mobile": true
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "content_type": "section",
+        "type": "section",
+        "data": {
+          "properties": {},
+          "display_options": {},
+          "styles": {
+            "content_color": "#2b2b2b",
+            "content_color_type": "section"
+          }
+        },
+        "rows": [
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "social",
+                    "data": {
+                      "properties": {},
+                      "display_options": {},
+                      "styles": {
+                        "icon_color": "white"
+                      }
+                    },
+                    "subblocks": [
+                      {
+                        "type": "social_link_icon",
+                        "link_type": "instagram",
+                        "link_url": "https://instagram.com/example"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "data": {
+              "styles": {
+                "column_layout": "1-column-full-width"
+              }
+            },
+            "columns": [
+              {
+                "data": {},
+                "blocks": [
+                  {
+                    "content_type": "block",
+                    "type": "text",
+                    "data": {
+                      "content": "<div>Want to change how you receive these emails?<br>You can {% unsubscribe %}.<br>{{ organization.name }} {{ organization.full_address }}</div>",
+                      "display_options": {},
+                      "styles": {}
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ The authoritative index of shared skills. Full instructions live in each
 | ID | Skill | Status | Version | Owner | Purpose |
 |---|---|---|---|---|---|
 | `execution.email-copy` | [Email Copy](execution/email-copy/SKILL.md) | draft | 0.1.0 | _unassigned_ | Write campaign or flow email copy from an approved brief, in the account's voice, within the account's messaging constraints. |
+| `execution.email-design` | [Email Design](execution/email-design/SKILL.md) | draft | 0.1.0 | _unassigned_ | Turn approved copy and an account's design tokens into a valid Klaviyo drag-and-drop template definition, built from live-text blocks. |
 | `marketing-strategy.account-growth-analysis` | [Account Growth & Analysis](marketing-strategy/account-growth-analysis/SKILL.md) | draft | 0.1.0 | _unassigned_ | The recurring loop that checks whether the strategy is working and decides what changes. |
 | `marketing-strategy.customer-persona` | [Customer Persona](marketing-strategy/customer-persona/SKILL.md) | draft | 0.1.0 | _unassigned_ | Persona work that earns its place by changing messaging decisions. |
 | `marketing-strategy.product-service-strategy` | [Product / Service Strategy](marketing-strategy/product-service-strategy/SKILL.md) | draft | 0.1.0 | _unassigned_ | How the catalog itself drives lifecycle: |
@@ -35,9 +36,9 @@ capability is developed — not as an empty placeholder.
 | Planned ID | Group | Notes |
 |---|---|---|
 | `execution.research` | execution | Feeds strategy skills; see `workflows/content-research.md` |
-| `execution.campaign-brief` | execution | Next priority — gates `execution.email-copy` |
+| `execution.campaign-brief` | execution | Next priority — gates `execution.email-copy`; step 2 of `workflows/creative-production.md` |
 | `execution.sms-copy` | execution | Needs `messaging-constraints` SMS section populated first |
-| `execution.creative-direction` | execution | |
+| `execution.creative-direction` | execution | Step 4 of `workflows/creative-production.md`, feeding `execution.email-design` |
 | `execution.segmentation` | execution | |
 | `execution.flow-architecture` | execution | Pairs with `workflows/flow-architecture.md` |
 | `execution.campaign-flow-qa` | execution | **Recommended first build** — gates three workflows |
