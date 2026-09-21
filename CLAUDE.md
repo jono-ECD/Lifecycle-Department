@@ -40,13 +40,13 @@ account-local skill. See `governance/skill-authoring.md`.
 <!-- Generated from accounts/registry.yml. Do not hand-edit: run scripts/sync.py -->
 
 <!-- BEGIN:generated:access-matrix -->
-| Account | Slug | Klaviyo ID | Verified | Live data |
-|---|---|---|---|---|
-| Blessed Botanicals | `blessed-botanicals` | `RaFbmF` | yes | Klaviyo MCP + Hiro `128074` |
-| Exzell Pharma Inc. | `exzell-pharma` | `W3jRK5` | **no** | none |
-| Something Borrowed Blooms | `something-borrowed-blooms` | `SmTYz2` | **no** | none |
-| Bad Boy Mower Parts | `bad-boy-mower-parts` | `UwjazH` | **no** | none |
-| Lazy Leaf | `lazy-leaf` | `RQeWJs` | yes | Klaviyo MCP |
+| Account | Slug | Klaviyo ID | Verified | Live data | Agent may | Owner |
+|---|---|---|---|---|---|---|
+| Blessed Botanicals | `blessed-botanicals` | `RaFbmF` | yes | Klaviyo MCP + Hiro `128074` | `read_only` | _unassigned_ |
+| Exzell Pharma Inc. | `exzell-pharma` | `W3jRK5` | **no** | none | `none` | _unassigned_ |
+| Something Borrowed Blooms | `something-borrowed-blooms` | `SmTYz2` | **no** | none | `none` | _unassigned_ |
+| Bad Boy Mower Parts | `bad-boy-mower-parts` | `UwjazH` | **no** | none | `none` | _unassigned_ |
+| Lazy Leaf | `lazy-leaf` | `RQeWJs` | yes | Klaviyo MCP | `read_only` | _unassigned_ |
 <!-- END:generated:access-matrix -->
 
 Three of five accounts have **no connector**. If asked to report on, analyze, or QA
@@ -58,8 +58,22 @@ against the API. Do not treat it as fact; flag it if it matters.
 ## Action boundaries
 
 Creating content, creating a platform draft, and scheduling or sending are three
-**separate** authorizations. Holding one never implies the others. Everything above
-read access is currently prohibited pending open decisions in
+**separate** authorizations. Holding one never implies the others.
+
+Each account's ceiling is the `agent_access` column above, set in
+`accounts/registry.yml` and enforced by `scripts/sync.py`:
+
+| | |
+|---|---|
+| `none` | No agent access |
+| `read_only` | Reads only — **the default, and currently every account** |
+| `draft` | May also create unpublished drafts. Requires a named `owner` |
+
+**Scheduling, sending and activating are human-only, per instance, always.**
+There is no config value that grants them.
+
+Modifying an existing live object (a flow, a segment, a live template) needs the
+account owner's approval for that specific change, recorded in the PR. See
 `integrations/mcp/access-policy.md`.
 
 ## Conventions

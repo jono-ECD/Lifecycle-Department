@@ -6,6 +6,7 @@
 | **Slug** | `lazy-leaf` |
 | **Klaviyo account** | `RQeWJs` (verified) |
 | **Data access** | Klaviyo MCP |
+| **Agent may** | `read_only` (owner: _unassigned_) |
 | **Registry entry** | [`accounts/registry.yml`](../registry.yml) |
 <!-- END:generated:account-header -->
 

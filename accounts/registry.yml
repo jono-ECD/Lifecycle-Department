@@ -8,6 +8,18 @@
 #   true  = confirmed via accounts endpoint
 #   false = supplied by a human, not yet confirmed — treat as provisional
 #
+# owner: the named person who authorizes agent actions on this account.
+#   null = nobody has been named. The account is capped at read_only until
+#   someone is. This is a real gate, enforced by scripts/sync.py.
+#
+# agent_access: the ceiling on what an agent may do here. See
+# integrations/mcp/access-policy.md for what each class means.
+#   none      = no agent access at all
+#   read_only = reads permitted, no writes            <- the default
+#   draft     = may also create unpublished drafts     (requires an owner)
+# Scheduling, sending and activating are never in this field. They are
+# human-only, per instance, and cannot be delegated to an agent.
+#
 # Last verification pass: 2026-09-20
 
 accounts:
@@ -19,6 +31,8 @@ accounts:
     industry: Ecommerce, Health & Beauty, Supplements
     timezone: America/New_York
     currency: USD
+    owner: null  # Mariana is primary client contact; repo authorizer not yet named
+    agent_access: read_only
     access:
       klaviyo_mcp: "Klaviyo - Blessed Botanicals"
       hiro_client_id: 128074
@@ -32,6 +46,8 @@ accounts:
     industry: null
     timezone: null
     currency: null
+    owner: null  # no connector
+    agent_access: none
     access:
       klaviyo_mcp: null        # no dedicated connector in current session
       hiro_client_id: null     # not present in Hiro client list
@@ -45,6 +61,8 @@ accounts:
     industry: null
     timezone: null
     currency: null
+    owner: null  # no connector
+    agent_access: none
     access:
       klaviyo_mcp: null
       hiro_client_id: null
@@ -58,6 +76,8 @@ accounts:
     industry: null
     timezone: null
     currency: null
+    owner: null  # no connector
+    agent_access: none
     access:
       klaviyo_mcp: null
       hiro_client_id: null
@@ -71,6 +91,8 @@ accounts:
     industry: null
     timezone: America/New_York
     currency: USD
+    owner: null
+    agent_access: read_only
     access:
       klaviyo_mcp: "Klaviyo - Lazy Leaf"
       hiro_client_id: null

@@ -9,6 +9,8 @@
 | ID verified against API | **no — provisional** |
 | Klaviyo MCP connector | _unknown_ |
 | Hiro client ID | _unknown_ |
+| Agent access ceiling | `none` |
+| Authorizing owner | _unknown_ |
 | Timezone | _unknown_ |
 | Currency | _unknown_ |
 | Website | _unknown_ |

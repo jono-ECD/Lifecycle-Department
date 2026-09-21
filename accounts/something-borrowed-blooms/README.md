@@ -6,6 +6,7 @@
 | **Slug** | `something-borrowed-blooms` |
 | **Klaviyo account** | `SmTYz2` (unverified) |
 | **Data access** | **none wired** — see registry |
+| **Agent may** | `none` (owner: _unassigned_) |
 | **Registry entry** | [`accounts/registry.yml`](../registry.yml) |
 <!-- END:generated:account-header -->
 

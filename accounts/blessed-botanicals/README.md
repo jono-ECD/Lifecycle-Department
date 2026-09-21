@@ -6,6 +6,7 @@
 | **Slug** | `blessed-botanicals` |
 | **Klaviyo account** | `RaFbmF` (verified) |
 | **Data access** | Klaviyo MCP + Hiro (id 128074) |
+| **Agent may** | `read_only` (owner: _unassigned_) |
 | **Registry entry** | [`accounts/registry.yml`](../registry.yml) |
 <!-- END:generated:account-header -->
 
