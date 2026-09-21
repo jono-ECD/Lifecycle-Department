@@ -1,0 +1,141 @@
+{
+  "_comment": [
+    "Design tokens for Blessed Botanicals, shaped to match the Klaviyo",
+    "create_dnd_email_template `definition.styles` array so they can be injected",
+    "with no translation step.",
+    "",
+    "STATUS: partial. `confirmed` values were read from the live account on",
+    "2026-09-21. `null` means NOT YET CAPTURED, never 'no constraint' — see",
+    "CLAUDE.md. Do not fill a null with a guess; a null beats a guess.",
+    "",
+    "Narrative, provenance and the audit findings live in design-system.md."
+  ],
+  "account_slug": "blessed-botanicals",
+  "version": "0.1.0",
+  "status": "partial",
+  "last_audited": "2026-09-21",
+
+  "palette": {
+    "confirmed": {
+      "brand_green": {
+        "value": "#1F4D3A",
+        "source": "footer section content_color, template VZ2gq2",
+        "usage_observed": "footer section background"
+      }
+    },
+    "stock_default_not_brand_decision": {
+      "_note": "Klaviyo defaults nobody changed. Do NOT treat as brand values until confirmed against a brand source.",
+      "canvas": "#f5f5f7",
+      "content": "#FFFFFF",
+      "body_text": "#5D5E60",
+      "link": "#334fb4",
+      "border": "#aaaaaa"
+    },
+    "needs_source": {
+      "primary": null,
+      "secondary": null,
+      "accent": null,
+      "neutrals": null,
+      "sale_or_urgency": null
+    }
+  },
+
+  "typography": {
+    "confirmed": {
+      "brand_family": {
+        "value": "Assistant",
+        "fallback_stack": "Assistant, Arial, 'Helvetica Neue', Helvetica, sans-serif",
+        "source": "inline font-family in footer text HTML, template VZ2gq2",
+        "note": "Applied inline only. Absent from every template's token layer."
+      }
+    },
+    "needs_source": {
+      "heading_family": null,
+      "body_family": null,
+      "scale": null,
+      "weights": null,
+      "letter_spacing": null
+    }
+  },
+
+  "layout": {
+    "confirmed": {
+      "content_width": 600,
+      "source": "definition.body.styles.width, identical across all 6 templates"
+    },
+    "needs_source": {
+      "spacing_scale": null,
+      "section_padding": null,
+      "block_rhythm": null
+    }
+  },
+
+  "button": {
+    "_note": "Brand button record 2167358 exists in the account but its spec has not been read. No button block appears in the audited template — the CTA is baked into a JPEG.",
+    "needs_source": {
+      "background_color": null,
+      "font_color": null,
+      "border_radius": null,
+      "padding": null,
+      "font_size": null,
+      "font_weight": null,
+      "width_behaviour": null,
+      "secondary_variant": null
+    }
+  },
+
+  "assets": {
+    "logo": {
+      "asset_id": "312947524",
+      "cropped_asset_id": "312948006",
+      "brand_logo_record": "2167357",
+      "max_width_desktop": 188,
+      "max_width_mobile": 149,
+      "href": "https://getblessedbotanicals.com/",
+      "alt_text": "Blessed Botanicals"
+    },
+    "brand_social_group": "2167363",
+    "social_links": {
+      "facebook": "https://www.facebook.com/people/Blessed-Botanicals/100092992958860/",
+      "instagram": "https://www.instagram.com/blessedbotanicalsextracts/",
+      "x-twitter": "https://x.com/blessdbotanical"
+    },
+    "icon_color": "white",
+    "cdn_base": "https://d3k81ch9hvuctc.cloudfront.net/company/RaFbmF/images/"
+  },
+
+  "components": {
+    "footer": {
+      "universal_id": "b8626a7eb0914562b550f664250b6d51",
+      "status": "built",
+      "note": "The only Universal Content component in the account. Use as the reference pattern for the rest."
+    },
+    "header": { "universal_id": null, "status": "not_built" },
+    "hero": { "universal_id": null, "status": "not_built" },
+    "product_grid": { "universal_id": null, "status": "not_built" },
+    "review": { "universal_id": null, "status": "not_built" },
+    "cta": { "universal_id": null, "status": "not_built" }
+  },
+
+  "klaviyo_dnd_block_vocabulary": {
+    "_note": "The closed set of block types create_dnd_email_template accepts. A design system for this account can only be expressed in these.",
+    "blocks": [
+      "text", "image", "button", "product", "review", "social", "spacer",
+      "horizontal_rule", "split", "table", "header", "coupon", "video",
+      "html", "drop_shadow"
+    ],
+    "column_layouts": [
+      "1-column-full-width",
+      "2-columns-equal-width", "2-columns-25%-75%", "2-columns-33%-67%",
+      "2-columns-67%-33%", "2-columns-75%-25%",
+      "3-columns-equal-width", "3-columns-25%-25%-50%",
+      "3-columns-25%-50%-25%", "3-columns-50%-25%-25%",
+      "4-columns-equal-width"
+    ],
+    "style_types": [
+      "base-styles", "text-styles", "link-styles",
+      "heading-1-styles", "heading-2-styles", "heading-3-styles",
+      "heading-4-styles", "mobile-styles"
+    ]
+  }
+}
