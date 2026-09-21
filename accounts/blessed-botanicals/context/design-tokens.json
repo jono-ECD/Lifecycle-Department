@@ -1,0 +1,296 @@
+{
+  "_comment": [
+    "Design tokens for Blessed Botanicals, shaped to match the Klaviyo",
+    "create_dnd_email_template `definition.styles` array so they can be injected",
+    "with no translation step.",
+    "",
+    "SOURCE: 'Blessed Botanicals.pdf' brand guidelines, 28pp, dated 2026-04-08,",
+    "in the Rebranding folder of the client Drive. Palette p16, typography",
+    "p19-20, email mockups p26-27.",
+    "",
+    "STATUS: target_state. NONE of this is live in Klaviyo today — all six",
+    "templates run unmodified Klaviyo stock styling. See design-system.md.",
+    "",
+    "`derived: true` marks a value proposed for email, not lifted from the brand",
+    "book. The book specifies families and weights, not an email type scale.",
+    "`null` means NOT YET CAPTURED, never 'no constraint'."
+  ],
+  "account_slug": "blessed-botanicals",
+  "version": "0.2.0",
+  "status": "target_state",
+  "source": "Drive: Blessed Botanicals/Blessed Botanicals Rebranding/Blessed Botanicals.pdf",
+  "source_dated": "2026-04-08",
+  "last_updated": "2026-09-21",
+  "blocking_question": "Is this rebrand approved and live, or pending client sign-off? Determines whether these are the tokens or a proposal.",
+
+  "palette": {
+    "forest": {
+      "hex": "#1f4d3a",
+      "rgb": "31,77,58",
+      "cmyk": "85,42,75,47",
+      "role": "primary",
+      "observed_usage": "footer background, announcement bar, secondary button fill, heading text on light grounds",
+      "note": "Already in use as the footer section content_color in Klaviyo — the single brand value that made it into the account."
+    },
+    "sage": {
+      "hex": "#a8bfa3",
+      "rgb": "168,191,163",
+      "cmyk": "40,14,41,1",
+      "role": "secondary",
+      "observed_usage": "section background blocks, often with botanical line-art"
+    },
+    "cream": {
+      "hex": "#f6f3ec",
+      "rgb": "246,243,236",
+      "cmyk": "5,4,9,0",
+      "role": "surface",
+      "observed_usage": "primary content background — NOT white",
+      "note": "Klaviyo currently uses #FFFFFF content on #f5f5f7 canvas. Both are stock defaults and both are wrong: cool grey where the brand is warm cream."
+    },
+    "gold": {
+      "hex": "#c8a96a",
+      "rgb": "200,169,106",
+      "cmyk": "21,30,63,7",
+      "role": "accent",
+      "observed_usage": "fine detail, dividers, icon accents"
+    },
+    "amber": {
+      "hex": "#f9b342",
+      "rgb": "249,179,66",
+      "cmyk": "0,35,80,0",
+      "role": "cta",
+      "observed_usage": "primary button fill with white text; full-bleed hero background band"
+    }
+  },
+
+  "typography": {
+    "display": {
+      "family": "Alga",
+      "role": "Titles, subtitles and highlights",
+      "weights_available": ["Light", "Light Italic", "Regular", "Regular Italic", "Semibold", "Semibold Italic", "Bold", "Bold Italic"],
+      "email_stack": "Alga, Georgia, 'Times New Roman', serif",
+      "email_risk": "Alga is not a Google Font. It will not render in Gmail or Outlook. Given ~90% mobile traffic (mostly iOS Mail, which does support webfonts) the fallback still applies to a meaningful share — the serif fallback must be chosen deliberately, not left to chance."
+    },
+    "body": {
+      "family": "Poppins",
+      "role": "Paragraph text",
+      "weights_available": ["Light", "Italic", "Regular", "Semibold", "Bold", "Black"],
+      "email_stack": "Poppins, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "email_risk": "Poppins is a Google Font and is the safer of the two, but still falls back in Outlook."
+    },
+    "_current_state": "Templates use Arial/Helvetica in the token layer and 'Assistant' inline in the footer. Assistant appears nowhere in the brand guidelines."
+  },
+
+  "klaviyo_definition_styles": {
+    "_comment": "Ready to inject as definition.styles. derived:true values are proposals.",
+    "_derived": true,
+
+    "base-styles": {
+      "properties": {
+        "disable_websafe_fonts": false,
+        "mobile_optimizations": true
+      },
+      "styles": {
+        "content_background_color": "#f6f3ec",
+        "border_radius": 0,
+        "inner_padding_top": 0,
+        "inner_padding_bottom": 0,
+        "inner_padding_left": 0,
+        "inner_padding_right": 0,
+        "margin_top": 0
+      }
+    },
+    "text-styles": {
+      "color": "#1f4d3a",
+      "font_family": "Poppins, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "font_size": 16,
+      "font_weight": "400",
+      "line_height": 1.6,
+      "mobile_font_size": 16,
+      "mobile_line_height": 1.6,
+      "text_align": "left"
+    },
+    "link-styles": {
+      "color": "#1f4d3a",
+      "font_weight": "600",
+      "text_decoration": "underline"
+    },
+    "heading-1-styles": {
+      "color": "#1f4d3a",
+      "font_family": "Alga, Georgia, 'Times New Roman', serif",
+      "font_size": 40,
+      "font_weight": "400",
+      "line_height": 1.15,
+      "margin_bottom": 20,
+      "mobile_font_size": 32,
+      "text_align": "center"
+    },
+    "heading-2-styles": {
+      "color": "#1f4d3a",
+      "font_family": "Alga, Georgia, 'Times New Roman', serif",
+      "font_size": 32,
+      "font_weight": "400",
+      "line_height": 1.2,
+      "margin_bottom": 16,
+      "mobile_font_size": 26,
+      "text_align": "center"
+    },
+    "heading-3-styles": {
+      "color": "#1f4d3a",
+      "font_family": "Alga, Georgia, 'Times New Roman', serif",
+      "font_size": 24,
+      "font_weight": "400",
+      "line_height": 1.25,
+      "margin_bottom": 12,
+      "mobile_font_size": 20,
+      "text_align": "center"
+    },
+    "heading-4-styles": {
+      "color": "#1f4d3a",
+      "font_family": "Poppins, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "font_size": 16,
+      "font_weight": "600",
+      "letter_spacing": 1,
+      "line_height": 1.3,
+      "margin_bottom": 8,
+      "mobile_font_size": 14,
+      "text_align": "center"
+    },
+    "mobile-styles": {
+      "mobile_margin": 0,
+      "mobile_padding_left": 16,
+      "mobile_padding_right": 16
+    }
+  },
+
+  "button": {
+    "_derived": true,
+    "_source": "Read from the email mockups on brand guidelines p26-27; no numeric button spec is given in the book.",
+    "primary": {
+      "background_color": "#f9b342",
+      "font_color": "#FFFFFF",
+      "font_family": "Poppins, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "font_size": 15,
+      "font_weight": "600",
+      "letter_spacing": 1,
+      "border_radius": 6,
+      "block_padding_top": 14,
+      "block_padding_bottom": 14,
+      "text_transform_note": "Rendered uppercase in the mockups; set the label in caps since DnD has no transform property.",
+      "width_behaviour": "fit, generous horizontal padding"
+    },
+    "secondary": {
+      "background_color": "#1f4d3a",
+      "font_color": "#FFFFFF",
+      "border_radius": 6,
+      "_note": "Used where amber would clash with an amber or photographic ground."
+    }
+  },
+
+  "layout": {
+    "content_width": 600,
+    "_derived_spacing_scale": [8, 16, 24, 32, 48],
+    "mobile_first": true,
+    "_traffic_note": "~90% mobile per the NTK. Design mobile-first, no exceptions."
+  },
+
+  "components": {
+    "_comment": "Observed in the brand book's own email mockups (p26-27). Build each as Klaviyo Universal Content so it is edited once and inherited everywhere. Only the footer exists today.",
+    "announcement_bar": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "Full-width forest #1f4d3a band, white Poppins caps, small. e.g. 'FREE SHIPPING ON ORDERS'"
+    },
+    "header": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "Centred logo on cream or amber ground; separate mobile/desktop widths via show_on, as the existing footer already does."
+    },
+    "hero": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "Either a photographic image block with the headline as a live text block beneath, or a flat amber band with live Alga headline. Never a headline baked into the image."
+    },
+    "feature_badges": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "2x2 grid of icon + short label pills on cream. Use split or multi-column rows, not a flattened image."
+    },
+    "product_grid": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "'Best Sellers' — Alga heading with rule, then product blocks: image, name, SHOP NOW link. Use the native `product` block so the catalog feeds it."
+    },
+    "support_block": {
+      "universal_id": null,
+      "status": "not_built",
+      "spec": "Sage #a8bfa3 ground with botanical line-art, 'Need Help?' heading, secondary button."
+    },
+    "footer": {
+      "universal_id": "b8626a7eb0914562b550f664250b6d51",
+      "status": "built",
+      "spec": "Forest #1f4d3a ground, centred logo, white social icons, 10px white unsubscribe + org address.",
+      "_note": "The only Universal Content in the account. Its font is currently 'Assistant' — update to the Poppins stack."
+    }
+  },
+
+  "assets": {
+    "logo": {
+      "klaviyo_asset_id": "312947524",
+      "klaviyo_cropped_asset_id": "312948006",
+      "brand_logo_record": "2167357",
+      "max_width_desktop": 188,
+      "max_width_mobile": 149,
+      "href": "https://getblessedbotanicals.com/",
+      "alt_text": "Blessed Botanicals"
+    },
+    "brand_button_record": "2167358",
+    "brand_social_group": "2167363",
+    "social_links": {
+      "facebook": "https://www.facebook.com/people/Blessed-Botanicals/100092992958860/",
+      "instagram": "https://www.instagram.com/blessedbotanicalsextracts/",
+      "x-twitter": "https://x.com/blessdbotanical"
+    },
+    "klaviyo_cdn_base": "https://d3k81ch9hvuctc.cloudfront.net/company/RaFbmF/images/",
+    "drive_sources": {
+      "brand_guidelines_pdf": "1DbK2CPIGD99LkMdOcxHQVjqb7z0OlP9B",
+      "rebranding_folder": "1XZtD0irNqGHO7_Zn26zXitBMqu7Rs0Cq",
+      "brand_assets_folder": "16OW9wgMKV7w9jl8sFacX_nlcgf9CBYW6",
+      "_note": "Assets stay in Drive. Pull by ID and push to Klaviyo with upload_image_from_url. Never commit binaries here."
+    }
+  },
+
+  "logo_rules": {
+    "_source": "Brand guidelines p13",
+    "prohibited": [
+      "Change the colour",
+      "Change the proportions",
+      "Add effects or an outline",
+      "Remove any words",
+      "Narrow or condense",
+      "Change the font"
+    ]
+  },
+
+  "klaviyo_dnd_block_vocabulary": {
+    "_note": "The closed set create_dnd_email_template accepts. The design system can only be expressed in these.",
+    "blocks": [
+      "text", "image", "button", "product", "review", "social", "spacer",
+      "horizontal_rule", "split", "table", "header", "coupon", "video",
+      "html", "drop_shadow"
+    ],
+    "column_layouts": [
+      "1-column-full-width",
+      "2-columns-equal-width", "2-columns-25%-75%", "2-columns-33%-67%",
+      "2-columns-67%-33%", "2-columns-75%-25%",
+      "3-columns-equal-width", "3-columns-25%-25%-50%",
+      "3-columns-25%-50%-25%", "3-columns-50%-25%-25%",
+      "4-columns-equal-width"
+    ],
+    "style_types": [
+      "base-styles", "text-styles", "link-styles",
+      "heading-1-styles", "heading-2-styles", "heading-3-styles",
+      "heading-4-styles", "mobile-styles"
+    ]
+  }
+}

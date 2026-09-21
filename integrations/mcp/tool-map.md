@@ -15,9 +15,24 @@ Which business actions map to which verified capabilities.
 | Read Klaviyo account metadata | `Klaviyo - Blessed Botanicals` | `get_account_details` | read | 2026-09-20 |
 | Read Klaviyo account metadata | `Klaviyo - Lazy Leaf` | `get_account_details` | read | 2026-09-20 |
 | List agency clients | `Hiro Analytics` | `list_clients` | read | 2026-09-20 |
+| Read brand colour library | `Klaviyo - Blessed Botanicals` | `get_brand_colors` | read | 2026-09-21 |
+| Read brand email defaults | `Klaviyo - Blessed Botanicals` | `get_brand_email_defaults` | read | 2026-09-21 |
+| List email templates | `Klaviyo - Blessed Botanicals` | `list_email_templates` | read | 2026-09-21 |
+| Read one template's DnD definition | `Klaviyo - Blessed Botanicals` | `get_email_template` | read | 2026-09-21 |
 
 Used to confirm the Klaviyo account IDs in `accounts/registry.yml` for
-Blessed Botanicals (`RaFbmF`) and Lazy Leaf (`RQeWJs`).
+Blessed Botanicals (`RaFbmF`) and Lazy Leaf (`RQeWJs`), and to build
+`accounts/blessed-botanicals/context/design-system.md`.
+
+Notes from exercising the template reads:
+
+- `list_email_templates` caps `page_size` at 10 and omits DnD definitions unless
+  `additional_fields_template: ["definition"]` is passed.
+- `fields_template` accepts `definition.styles` on its own. Pulling just the
+  token layer across every template is cheap; pulling `definition.body.sections`
+  is not — a single content-heavy template runs to thousands of lines.
+- An empty result is a finding. `get_brand_colors` returned `[]` for Blessed
+  Botanicals, which is what established that the brand library is unpopulated.
 
 ## Pending
 

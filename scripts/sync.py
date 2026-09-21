@@ -30,6 +30,41 @@ def load():
     return yaml.safe_load(REGISTRY.read_text())["accounts"]
 
 
+ACCESS_LEVELS = ("none", "read_only", "draft")
+
+
+def validate_access(accounts):
+    """Enforce the authorization rules that access-policy.md describes in prose.
+
+    A policy that only exists as a document gets routed around. These two rules
+    are the ones that must hold mechanically:
+
+      1. agent_access is one of the three known classes.
+      2. 'draft' requires a named owner. Nobody named means nobody can be asked,
+         which is how the previous policy deadlocked itself.
+
+    Publish is deliberately not a level. Scheduling and sending are human-only,
+    per instance, and are never granted by a config field.
+    """
+    for c in accounts:
+        level = c.get("agent_access")
+        if level not in ACCESS_LEVELS:
+            sys.exit(
+                f"error: {c['slug']} has agent_access: {level!r} — "
+                f"must be one of {', '.join(ACCESS_LEVELS)}"
+            )
+        if level == "draft" and not c.get("owner"):
+            sys.exit(
+                f"error: {c['slug']} has agent_access: draft with no owner. "
+                "Name the person who authorizes drafts, or drop to read_only."
+            )
+        if level != "none" and not (c.get("access") or {}).get("klaviyo_mcp"):
+            sys.exit(
+                f"error: {c['slug']} has agent_access: {level} but no Klaviyo "
+                "connector. Set agent_access: none until one is wired."
+            )
+
+
 def tick(v):
     return "✅" if v else "❌"
 
@@ -51,8 +86,8 @@ def index_table(accounts):
 
 def agent_table(accounts):
     rows = [
-        "| Account | Slug | Klaviyo ID | Verified | Live data |",
-        "|---|---|---|---|---|",
+        "| Account | Slug | Klaviyo ID | Verified | Live data | Agent may | Owner |",
+        "|---|---|---|---|---|---|---|",
     ]
     for c in accounts:
         a = c.get("access") or {}
@@ -63,7 +98,8 @@ def agent_table(accounts):
             src.append(f"Hiro `{a['hiro_client_id']}`")
         rows.append(
             f"| {c['name']} | `{c['slug']}` | `{c['klaviyo_account_id']}` "
-            f"| {'yes' if c['verified'] else '**no**'} | {' + '.join(src) or 'none'} |"
+            f"| {'yes' if c['verified'] else '**no**'} | {' + '.join(src) or 'none'} "
+            f"| `{c.get('agent_access')}` | {c.get('owner') or '_unassigned_'} |"
         )
     return "\n".join(rows)
 
@@ -82,6 +118,8 @@ def account_header(c):
         f"| **Klaviyo account** | `{c['klaviyo_account_id']}` "
         f"({'verified' if c['verified'] else 'unverified'}) |",
         f"| **Data access** | {' + '.join(src) or '**none wired** — see registry'} |",
+        f"| **Agent may** | `{c.get('agent_access')}` "
+        f"(owner: {c.get('owner') or '_unassigned_'}) |",
         "| **Registry entry** | [`accounts/registry.yml`](../registry.yml) |",
     ])
 
@@ -97,6 +135,8 @@ def platform_klaviyo(c):
         f"| ID verified against API | {'yes' if c['verified'] else '**no — provisional**'} |",
         f"| Klaviyo MCP connector | {val(a.get('klaviyo_mcp'))} |",
         f"| Hiro client ID | {val(a.get('hiro_client_id'))} |",
+        f"| Agent access ceiling | `{c.get('agent_access')}` |",
+        f"| Authorizing owner | {val(c.get('owner'))} |",
         f"| Timezone | {val(c.get('timezone'))} |",
         f"| Currency | {val(c.get('currency'))} |",
         f"| Website | {val(c.get('website'))} |",
@@ -173,6 +213,7 @@ def main():
     args = ap.parse_args()
 
     accounts = load()
+    validate_access(accounts)
     slugs = {c["slug"] for c in accounts}
 
     # registry <-> folder consistency

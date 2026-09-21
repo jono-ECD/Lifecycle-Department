@@ -9,6 +9,8 @@
 | ID verified against API | yes |
 | Klaviyo MCP connector | `Klaviyo - Blessed Botanicals` |
 | Hiro client ID | `128074` |
+| Agent access ceiling | `read_only` |
+| Authorizing owner | _unknown_ |
 | Timezone | `America/New_York` |
 | Currency | `USD` |
 | Website | `getblessedbotanicals.com` |
