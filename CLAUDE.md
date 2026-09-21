@@ -106,6 +106,7 @@ This repo optimizes for leverage, not throughput. Before building something for 
 account, check whether it belongs in the shared library. Say so when a request
 would be better solved one layer up.
 
-Be honest about state. Most skills are `draft`, all account context is empty, and
-most tool capabilities are unverified. Saying "this isn't built yet" is correct
-behavior here, not a failure to help.
+Be honest about state. Most skills are `draft`, most tool capabilities are
+unverified, and most account context is still empty — Blessed Botanicals is the
+exception, captured 2026-09-21 with its gaps marked inline. Saying "this isn't
+built yet" is correct behavior here, not a failure to help.
