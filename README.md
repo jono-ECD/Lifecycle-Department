@@ -1,49 +1,87 @@
 # Lifecycle & Retention Department
 
-The operating system for the department: how we work, held once, applied across
-accounts.
+The department's skills library: how we work, held once, applied across accounts.
 
-## The one idea
+## The separation this repository enforces
 
-Two layers, separated on purpose:
+| Layer | Holds | Answers |
+|---|---|---|
+| [`skills/`](skills/) | Reusable procedures | **How** the work is done |
+| [`workflows/`](workflows/) | Ordered sequences of skills, with gates | **In what order** |
+| [`accounts/*/context/`](accounts/) | Voice, products, audiences, constraints | **Who** it's for |
+| `accounts/*/{strategy,campaigns,flows,reporting}/` | Work product | **What** was produced |
 
-| Layer | What it holds | Rate of change | Scope |
-|---|---|---|---|
-| [`system/`](system/) | Method — templates, SOPs, agent skills, workflows | Rarely | Every account |
-| [`clients/`](clients/) | Instances — strategy, state, output per account | Weekly | One account |
+Skills are **referenced, never copied**. One authoritative version of each
+procedure; account facts are supplied to it as context.
 
-[`clients/registry.yml`](clients/registry.yml) joins them. It is the only place
-account IDs live.
+The test when you cannot place something: *would this be true for a different
+account?* Yes → shared library. No → that account's folder.
 
-**Why this and not the obvious thing.** The natural move is to turn the department's
-service taxonomy straight into folders and drop clients inside. That fails two ways:
-nest clients under the taxonomy and you get ~100 folders with each client's context
-scattered across all of them; nest the taxonomy under clients and you duplicate every
-template five times and they drift within a quarter. Splitting method from instance
-means adding client #6 touches zero files in `system/`, and improving a template
-improves it for everyone at once.
+## Map
+
+```
+department/     What we sell, how we operate, the quality bar
+skills/         Reusable procedures — CATALOG.md is the index
+workflows/      Ordered sequences with quality gates
+accounts/       Per-account context, platform refs, and deliverables
+integrations/   Klaviyo Composer and MCP — verified capabilities only
+templates/      Reusable output formats
+governance/     Authoring, review, isolation, changelog
+scripts/        sync.py — regenerates derived docs from their sources
+```
 
 ## Start here
 
-- **Running work for an account?** → [`clients/`](clients/), then the relevant
-  [`system/`](system/) node for the method.
-- **Improving how we work?** → [`system/`](system/). Fix it once, everyone gets it.
-- **Adding an account?** → [`clients/README.md`](clients/README.md).
-- **Working here as an agent?** → [`CLAUDE.md`](CLAUDE.md).
+| You want to | Go to |
+|---|---|
+| Run work for an account | [`accounts/`](accounts/), then the matching [workflow](workflows/) |
+| Find a procedure | [`skills/CATALOG.md`](skills/CATALOG.md) |
+| Understand what we sell | [`department/service-catalog.md`](department/service-catalog.md) |
+| Add an account | [`accounts/README.md`](accounts/README.md#adding-an-account) |
+| Write or change a skill | [`governance/skill-authoring.md`](governance/skill-authoring.md) |
+| Work here as an agent | [`CLAUDE.md`](CLAUDE.md) |
 
-## Current state
+## Current state — read before relying on anything
 
-Five active accounts. **Two have live data connectors; three do not.** Any workflow
-that reads live performance data runs for Blessed Botanicals and Lazy Leaf only.
-See [`clients/README.md`](clients/README.md) for the access matrix — closing those
-gaps is the highest-leverage unblock in the repo.
+**Most skills are `draft`.** Purpose, inputs, and outputs are settled; the
+step-by-step procedures are not written. A `draft` skill is not safe to deliver
+from. [`skills/CATALOG.md`](skills/CATALOG.md) shows status per skill.
 
-The `system/` tree is scaffolded: every node documents its purpose, inputs, outputs,
-and dependencies. **Templates and skills are not yet built.** Each node's README
-carries an asset table tracking what exists.
+Fully worked, as reference examples:
+- [`execution.email-copy`](skills/execution/email-copy/SKILL.md) — the skill shape
+- [`workflows/multi-campaign.md`](workflows/multi-campaign.md) — context → skill → QA → deliverable
 
-## Working principle
+**Account context is empty.** Every `accounts/*/context/` file is scaffolded and
+marked *not yet captured*. An empty `messaging-constraints.md` means unknown, never
+unconstrained.
 
-Before solving something for one account, ask whether the solution belongs in
-`system/`. If it does, build it there and instantiate it — that is the difference
-between the department getting faster and the department getting busier.
+**Two of five accounts have live data connectors.** Anything reading live
+performance runs for Blessed Botanicals and Lazy Leaf only. See
+[`integrations/mcp/tool-map.md`](integrations/mcp/tool-map.md) — only three
+capabilities are verified; everything else is pending.
+
+**No access separation between accounts.** Folders organize, they do not restrict.
+See [`governance/account-isolation.md`](governance/account-isolation.md).
+
+## Derived content
+
+Some tables are generated from their sources by `scripts/sync.py` and sit between
+`<!-- BEGIN:generated:… -->` markers. Never hand-edit them.
+
+| Generated | From |
+|---|---|
+| Account tables in `accounts/README.md`, `CLAUDE.md`, each account README | `accounts/registry.yml` |
+| `accounts/*/platform/klaviyo.md` | `accounts/registry.yml` |
+| `skills/CATALOG.md` | `skills/**/SKILL.md` headers |
+
+```bash
+python3 scripts/sync.py          # regenerate
+python3 scripts/sync.py --check  # fail if stale
+```
+
+## Suggested build order
+
+1. `execution.campaign-flow-qa` — cheapest to make real, gates three workflows
+2. `execution.campaign-brief` — gates `email-copy`, which is already written
+3. Populate context for one account and pilot `workflows/multi-campaign.md` end to end
+4. Refine the structure from what that pilot teaches, then expand

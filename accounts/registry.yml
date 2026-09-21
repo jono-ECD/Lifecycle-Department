@@ -1,0 +1,77 @@
+# Account Registry — single source of truth for account identity and data access.
+#
+# Every agent, workflow, and report resolves a client through THIS file.
+# Never hardcode an account ID in a workflow, skill, or script; look it up here.
+# Adding an account = one entry here + one folder under accounts/<slug>/.
+#
+# verified: has the klaviyo_account_id been confirmed against the live API?
+#   true  = confirmed via accounts endpoint
+#   false = supplied by a human, not yet confirmed — treat as provisional
+#
+# Last verification pass: 2026-09-20
+
+accounts:
+  - slug: blessed-botanicals
+    name: Blessed Botanicals
+    klaviyo_account_id: RaFbmF
+    verified: true
+    website: getblessedbotanicals.com
+    industry: Ecommerce, Health & Beauty, Supplements
+    timezone: America/New_York
+    currency: USD
+    access:
+      klaviyo_mcp: "Klaviyo - Blessed Botanicals"
+      hiro_client_id: 128074
+    status: active
+
+  - slug: exzell-pharma
+    name: Exzell Pharma Inc.
+    klaviyo_account_id: W3jRK5
+    verified: false
+    website: null
+    industry: null
+    timezone: null
+    currency: null
+    access:
+      klaviyo_mcp: null        # no dedicated connector in current session
+      hiro_client_id: null     # not present in Hiro client list
+    status: active
+
+  - slug: something-borrowed-blooms
+    name: Something Borrowed Blooms
+    klaviyo_account_id: SmTYz2
+    verified: false
+    website: null
+    industry: null
+    timezone: null
+    currency: null
+    access:
+      klaviyo_mcp: null
+      hiro_client_id: null
+    status: active
+
+  - slug: bad-boy-mower-parts
+    name: Bad Boy Mower Parts
+    klaviyo_account_id: UwjazH
+    verified: false
+    website: null
+    industry: null
+    timezone: null
+    currency: null
+    access:
+      klaviyo_mcp: null
+      hiro_client_id: null
+    status: active
+
+  - slug: lazy-leaf
+    name: Lazy Leaf
+    klaviyo_account_id: RQeWJs
+    verified: true
+    website: lazyleaf.com
+    industry: null
+    timezone: America/New_York
+    currency: USD
+    access:
+      klaviyo_mcp: "Klaviyo - Lazy Leaf"
+      hiro_client_id: null
+    status: active

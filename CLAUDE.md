@@ -2,35 +2,45 @@
 
 ## What this repo is
 
-The Lifecycle & Retention Department's operating system. Two layers:
+The Lifecycle & Retention Department's skills library. Four kinds of content, kept
+apart on purpose:
 
-- `system/` — reusable method. Templates, SOPs, agent skills, workflows.
-  Applies to every account. **Never write client-specific content here.**
-- `clients/` — per-account instances. Strategy, state, output.
-  **Never write reusable method here.**
+| Kind | Location | Rule |
+|---|---|---|
+| Reusable procedure | `skills/<group>/<name>/SKILL.md` | Never account-specific |
+| Ordered sequence | `workflows/<name>.md` | Coordinates skills; defines the gate |
+| Account facts | `accounts/<slug>/context/` | Never procedure |
+| Work product | `accounts/<slug>/{strategy,campaigns,flows,reporting}/` | Never in the shared library |
 
-`scripts/` is repo infrastructure, not a third content layer — tooling that keeps
-the two layers consistent.
+`department/`, `templates/`, `integrations/`, `governance/`, and `scripts/` support
+these. `scripts/` is infrastructure, not content.
 
-If you are about to write a file and cannot tell which layer it belongs in, ask:
-*would this be true for a different client?* Yes → `system/`. No → `clients/<slug>/`.
+Placement test: *would this be true for a different account?* Yes → shared library.
+No → that account's folder.
 
-## Resolving a client
+**Account facts never justify a new skill.** Different voice, products, or
+constraints → `accounts/<slug>/context/`. Only a different *procedure* justifies an
+account-local skill. See `governance/skill-authoring.md`.
 
-`clients/registry.yml` is the single source of truth for account identity and data
-access. **Always read it before touching a client.** Never hardcode a Klaviyo account
-ID in a skill, workflow, script, or document — look it up by slug.
+## Before any account work
 
-When writing a skill or workflow, take a client **slug** as the parameter and resolve
-identity through the registry. A skill that hardcodes `RaFbmF` works for one account;
-one that resolves `blessed-botanicals` works for all of them.
+1. **Confirm the account.** Resolve by slug through `accounts/registry.yml`. Never
+   hardcode a Klaviyo account ID in a skill, workflow, script, or document.
+   Applying one account's context to another is the most damaging error available
+   here, and it is silent — the output looks plausible.
+2. **Check skill status.** `draft` means the procedure is not written and the skill
+   is not safe to deliver from. Say so rather than improvising through it.
+3. **Check data access.** See the matrix below.
+4. **Check the capability is verified.** `integrations/mcp/tool-map.md` lists three
+   verified capabilities. Everything else is pending — a connector existing is not
+   evidence a tool works.
 
 ## Data access is not uniform — check before promising
 
-<!-- Generated from clients/registry.yml. Do not hand-edit: run scripts/sync_registry.py -->
+<!-- Generated from accounts/registry.yml. Do not hand-edit: run scripts/sync.py -->
 
 <!-- BEGIN:generated:access-matrix -->
-| Client | Slug | Klaviyo ID | Verified | Live data |
+| Account | Slug | Klaviyo ID | Verified | Live data |
 |---|---|---|---|---|
 | Blessed Botanicals | `blessed-botanicals` | `RaFbmF` | yes | Klaviyo MCP + Hiro `128074` |
 | Exzell Pharma Inc. | `exzell-pharma` | `W3jRK5` | **no** | none |
@@ -43,23 +53,45 @@ Three of five accounts have **no connector**. If asked to report on, analyze, or
 one of them, say so plainly rather than producing an empty or inferred answer.
 
 "Verified: no" means the account ID came from a human and has not been confirmed
-against the API. Do not treat it as fact; flag it if it matters to the task.
+against the API. Do not treat it as fact; flag it if it matters.
+
+## Action boundaries
+
+Creating content, creating a platform draft, and scheduling or sending are three
+**separate** authorizations. Holding one never implies the others. Everything above
+read access is currently prohibited pending open decisions in
+`integrations/mcp/access-policy.md`.
 
 ## Conventions
 
-- Client folders stay lean. Create subfolders when there is real work for them, not
-  as empty scaffolding.
-- Each `system/` node README carries an asset table. Update it when you add a
-  template or skill so the tree reports its own state honestly.
-- Account tables in `clients/README.md`, `CLAUDE.md`, and each client README sit
-  between `<!-- BEGIN:generated:… -->` markers and are **derived from the registry**.
-  Never hand-edit them. Edit `clients/registry.yml`, then run:
-  `python3 scripts/sync_registry.py` (`--check` verifies without writing).
-- Don't duplicate registry data into client folders. One source of truth, or it drifts.
-- Mark unknowns as unknown. A `null` in the registry is more useful than a guess.
+- **Generated blocks.** Content between `<!-- BEGIN:generated:… -->` markers is
+  derived. Never hand-edit. Edit the source, then run `python3 scripts/sync.py`
+  (`--check` verifies without writing).
+
+  | Generated | From |
+  |---|---|
+  | Account tables in `accounts/README.md`, `CLAUDE.md`, each account README | `accounts/registry.yml` |
+  | `accounts/*/platform/klaviyo.md` | `accounts/registry.yml` |
+  | `skills/CATALOG.md` | `skills/**/SKILL.md` headers |
+
+- **Skill headers are structured.** The ID/Owner/Status/Version/Last-reviewed block
+  is parsed by `sync.py`. Keep the format exactly; a malformed header fails the sync.
+- **Don't create empty placeholder folders.** Add a skill folder when the
+  capability is being written. Planned skills live in the "Not yet built" table in
+  `skills/CATALOG.md`.
+- **Deliverables go under the account**, never in `skills/`, `workflows/`, or
+  `templates/`.
+- **Mark unknowns as unknown.** An empty context section means *not yet captured*,
+  never *no constraints*. A `null` in the registry beats a guess.
+- **Never commit** credentials, real customer records, or client-identifying
+  material in shared examples.
 
 ## Default posture
 
 This repo optimizes for leverage, not throughput. Before building something for one
-account, check whether it belongs in `system/`. Say so when a request would be better
-solved one layer up — building the reusable version is usually worth the extra pass.
+account, check whether it belongs in the shared library. Say so when a request
+would be better solved one layer up.
+
+Be honest about state. Most skills are `draft`, all account context is empty, and
+most tool capabilities are unverified. Saying "this isn't built yet" is correct
+behavior here, not a failure to help.
