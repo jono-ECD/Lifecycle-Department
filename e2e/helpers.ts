@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { PrismaClient } from '@prisma/client';
 
@@ -18,7 +19,14 @@ export async function hydrated(page: Page) {
   await page.locator('body[data-hydrated="1"]').waitFor({ timeout: 60_000 });
 }
 
+/** Puts the seeded reviewer back on the known token, since other tests revoke and regenerate it. */
+export async function resetReviewerToken() {
+  const r = await db().reviewer.findFirstOrThrow({ where: { email: 'brittany@example.com' } });
+  await db().reviewer.update({ where: { id: r.id }, data: { tokenHash: createHash('sha256').update(REVIEWER_TOKEN).digest('hex'), revokedAt: null } });
+}
+
 export async function openReviewerBank(page: Page) {
+  await resetReviewerToken();
   await page.goto(`/r/${REVIEWER_TOKEN}`);
   await expect(page).toHaveURL(/\/bank$/);
   await page.locator('.gcard, .emptystate').first().waitFor();
