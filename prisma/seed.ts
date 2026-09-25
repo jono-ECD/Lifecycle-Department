@@ -15,6 +15,8 @@ import { addDays, todayYmd, ymdToDate } from '../lib/dates';
 
 const REF = path.resolve(process.cwd(), 'reference');
 const d = (s: string) => ymdToDate(s);
+// Timestamps at 10:00 Chicago (15:00 UTC) so they show the intended day in the workspace timezone.
+const t = (s: string) => new Date(ymdToDate(s).getTime() + 15 * 3600 * 1000);
 
 type Seed = {
   name: string;
@@ -82,14 +84,14 @@ async function main() {
         type: it.type,
         status: it.status,
         builtDate: d(it.built),
-        lastActivityAt: d(it.since),
+        lastActivityAt: t(it.since),
         scheduledDate: it.scheduled ? d(it.scheduled) : null,
-        sentDate: it.status === 'sent' ? d(it.since) : null,
+        sentDate: it.status === 'sent' ? t(it.since) : null,
         position: pos++,
         createdBy: 'ECD',
         currentVersion: it.img ? 1 : 0,
-        reviewEnteredAt: it.status === 'review' ? d(it.since) : null,
-        reviewNotifiedAt: it.status === 'review' ? d(it.since) : null,
+        reviewEnteredAt: it.status === 'review' ? t(it.since) : null,
+        reviewNotifiedAt: it.status === 'review' ? t(it.since) : null,
         createdAt: d(it.built),
       },
     });
@@ -101,7 +103,7 @@ async function main() {
           authorName: who === 'You' ? reviewerName : 'ECD',
           body,
           kind: 'comment',
-          createdAt: new Date(ymdToDate(when).getTime() + 15 * 3600 * 1000),
+          createdAt: t(when),
         },
       });
     }
