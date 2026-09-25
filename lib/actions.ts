@@ -7,6 +7,7 @@ import { checkSlot } from '@/lib/slots';
 import { dateToYmd, isYmd, todayYmd, ymdToDate } from '@/lib/dates';
 import { isStatus } from '@/lib/status';
 import { notifyStatusChange } from '@/lib/notify';
+import { getSendProvider } from '@/lib/sendProvider';
 
 export interface ActionInput {
   action: Action;
@@ -69,6 +70,16 @@ export async function performAction(campaignId: string, actor: Actor, input: Act
       },
     }),
   ]);
+
+  if (to === 'sent') {
+    await getSendProvider().onMarkedSent({
+      campaignId: campaign.id,
+      workspaceId: campaign.workspaceId,
+      name: campaign.name,
+      scheduledDate: campaign.scheduledDate ? dateToYmd(campaign.scheduledDate) : null,
+      actorName: actor.name,
+    });
+  }
 
   await notifyStatusChange({ campaignId: campaign.id, workspaceId: campaign.workspaceId, actor, action: input.action, from: campaign.status, to, note, date });
 

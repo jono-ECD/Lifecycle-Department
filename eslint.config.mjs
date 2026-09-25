@@ -9,7 +9,7 @@ const compat = new FlatCompat({ baseDirectory: __dirname });
 const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
-    ignores: ['node_modules/**', '.next/**', '.npm-cache/**', 'storage/**', 'test-results/**', 'playwright-report/**', 'reference/**', 'next-env.d.ts'],
+    ignores: ['node_modules/**', '.next/**', '.next-e2e/**', 'storage-e2e/**', '.npm-cache/**', 'storage/**', 'test-results/**', 'playwright-report/**', 'reference/**', 'next-env.d.ts'],
   },
   {
     rules: {

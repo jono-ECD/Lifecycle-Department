@@ -42,7 +42,7 @@ const REVIEWER: Record<Status, ActionDef[]> = {
 
 // What an admin can do on top of the reviewer actions.
 const ADMIN_EXTRA: Record<Status, ActionDef[]> = {
-  draft: [A('move_to_review', 'Move to review', 'the reviewer gets an email', '', 'review', { adminOnly: true })],
+  draft: [A('move_to_review', 'Move to review', 'emails the reviewer', '', 'review', { adminOnly: true })],
   review: [],
   approved: [A('mark_sent', 'Mark as sent', 'sent from Klaviyo', 'ghost', 'sent', { adminOnly: true })],
   hold: [A('mark_sent', 'Mark as sent', 'sent from Klaviyo', 'ghost', 'sent', { adminOnly: true })],
