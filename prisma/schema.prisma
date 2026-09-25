@@ -1,0 +1,143 @@
+// SQLite by default. prisma/schema.postgres.prisma is the same schema with provider = "postgresql".
+// Only DateTime, String, Int, Boolean are used so both providers work without changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  logoPath   String?
+  brandColor String?
+  timezone   String   @default("America/Chicago")
+  windowDays Int      @default(14)
+  maxPerDay  Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  campaigns Campaign[]
+  reviewers Reviewer[]
+  blocks    CalendarBlock[]
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Campaign {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  name             String
+  subtitle         String    @default("")
+  type             String    @default("promo")
+  status           String    @default("draft")
+  builtDate        DateTime
+  lastActivityAt   DateTime  @default(now())
+  scheduledDate    DateTime?
+  sentDate         DateTime?
+  position         Int       @default(0)
+  createdBy        String    @default("ECD")
+  currentVersion   Int       @default(0)
+  reviewEnteredAt  DateTime?
+  reviewNotifiedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assets    CampaignAsset[]
+  comments  Comment[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, scheduledDate])
+}
+
+model CampaignAsset {
+  id           String   @id @default(cuid())
+  campaignId   String
+  version      Int
+  kind         String
+  path         String
+  thumbPath    String?
+  width        Int?
+  height       Int?
+  orderIndex   Int
+  originalName String   @default("")
+  size         Int      @default(0)
+  uploadedAt   DateTime @default(now())
+  uploadedBy   String   @default("ECD")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, version, orderIndex])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  campaignId String
+  authorKind String
+  authorName String
+  authorId   String?
+  body       String
+  kind       String   @default("comment")
+  fromStatus String?
+  toStatus   String?
+  version    Int?
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+}
+
+model CalendarBlock {
+  id          String   @id @default(cuid())
+  workspaceId String
+  date        DateTime
+  label       String
+  createdBy   String   @default("ECD")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date])
+}
+
+model Reviewer {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  email       String
+  tokenHash   String    @unique
+  pinHash     String?
+  lastSeenAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  type        String
+  recipient   String
+  workspaceId String?
+  campaignId  String?
+  subject     String
+  dedupKey    String?  @unique
+  providerId  String?
+  sentAt      DateTime @default(now())
+
+  @@index([workspaceId, type, sentAt])
+}
