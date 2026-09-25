@@ -14,3 +14,6 @@ e2e/.auth/
 .DS_Store
 tsconfig.tsbuildinfo
 .next-dev.log
+e2e.db
+storage-e2e/
+.next-e2e/
