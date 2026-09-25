@@ -13,7 +13,11 @@ const eslintConfig = [
   },
   {
     rules: {
+      // Plain <img> is intended: designs are served from our own storage at their real size.
       '@next/next/no-img-element': 'off',
+      // The font link lives in the App Router root layout, which covers every page.
+      '@next/next/no-page-custom-font': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 ];
