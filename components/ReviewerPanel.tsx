@@ -38,7 +38,7 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
     await showLink(r.data.id, r.data.link);
   }
 
-  async function op(id: string, body: { op: 'revoke' | 'regenerate' | 'clear_pin' } | { op: 'set_pin'; pin: string }) {
+  async function op(id: string, body: { op: 'revoke' | 'regenerate' | 'link' | 'clear_pin' } | { op: 'set_pin'; pin: string }) {
     setBusy(true);
     setMsg(null);
     const r = await api<{ link?: string }>(`/api/admin/reviewers/${id}`, { body });
@@ -48,6 +48,10 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
     if (body.op === 'regenerate') {
       setRows((x) => x.map((row) => (row.id === id ? { ...row, revoked: false } : row)));
       if (r.data.link) await showLink(id, r.data.link);
+    }
+    if (body.op === 'link' && r.data.link) {
+      await showLink(id, r.data.link);
+      await copy(r.data.link);
     }
     if (body.op === 'set_pin') setRows((x) => x.map((row) => (row.id === id ? { ...row, hasPin: true } : row)));
     if (body.op === 'clear_pin') setRows((x) => x.map((row) => (row.id === id ? { ...row, hasPin: false } : row)));
@@ -73,7 +77,7 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
       <div className="k">Reviewer links</div>
       <h3>Who reviews this bank</h3>
       <p className="small" style={{ margin: 0 }}>
-        Each reviewer gets a personal link. It signs them in for 90 days on that device. Links are shown once, right after they are created.
+        Each reviewer gets a personal link. It signs them in for 90 days on that device. The personal link is shown once, right after it is created. Copy link gives a 45 day link and a QR code for an existing reviewer.
       </p>
       {msg && <div className={msg.kind}>{msg.text}</div>}
       {link && (
@@ -113,6 +117,13 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
               <td>{r.email}</td>
               <td className="muted">{r.lastSeen ?? 'never'}</td>
               <td className="r">
+                {!r.revoked && (
+                  <>
+                    <button className="btn sm" type="button" disabled={busy} onClick={() => op(r.id, { op: 'link' })} data-testid="copy-link">
+                      Copy link
+                    </button>{' '}
+                  </>
+                )}
                 <button className="btn sm" type="button" disabled={busy} onClick={() => op(r.id, { op: 'regenerate' })}>
                   New link
                 </button>{' '}
