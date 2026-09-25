@@ -19,3 +19,4 @@ storage-e2e/
 .next-e2e/
 .next-build/
 .check.log
+.build.log

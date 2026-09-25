@@ -17,7 +17,7 @@ Open http://localhost:3000. The seed prints the admin sign in and the reviewer l
 - Admin: http://localhost:3000/admin with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env` (defaults: `mauricio@ecdigitalstrategy.com` / `campaign-bank`).
 - Reviewer: http://localhost:3000/r/bb-dev-reviewer-token-8f3a1c9d2e7b4a6f (fixed by `SEED_REVIEWER_TOKEN` in `.env` for local use).
 
-`npm run seed` creates `.env` from `.env.example` when it is missing, pushes the SQLite schema, seeds the Blessed Botanicals workspace with the prototype's campaigns and images, one reviewer (Brittany), and two scheduled campaigns. Run it again any time to reset that workspace; the admin account is kept.
+`npm run seed` creates `.env` from `.env.example` when it is missing, pushes the SQLite schema (the file is `prisma/dev.db`, Prisma resolves the path relative to the schema), seeds the Blessed Botanicals workspace with the prototype's campaigns and images, one reviewer (Brittany), and two scheduled campaigns. Run it again any time to reset that workspace; the admin account is kept.
 
 Requirements: Node 20 or newer. Playwright's Chromium is installed inside `node_modules` by `npm run e2e:install` (already done on this machine).
 
@@ -126,3 +126,10 @@ reference/           the prototype and the design images
 ## Tests
 
 Unit tests cover status transitions, slot availability, token hashing and signing, digest batching, reminder rules, the S3 adapter against a mock, the Resend transport against a fake fetch, and the image pipeline. End to end tests run the real app with a fresh database: reviewer approves, request changes without a note is refused, scheduling into a slot, blocked days, admin uploads two PNGs and a second version, notification log entries, revoked links. Screenshots at 390 and 1280 land in `e2e/screenshots`.
+
+## Small things worth knowing
+
+- In the drawer, Escape closes and the arrow keys move to the previous or next campaign in the current list.
+- In workspace settings, Copy link gives an existing reviewer a 45 day signed link and a QR code without changing their personal link. New link rotates the personal token and shows it once.
+- The admin workspace page ends with the last 8 thread entries; the Activity page has the last 50.
+- A workspace with no campaigns shows an empty state instead of an empty grid.

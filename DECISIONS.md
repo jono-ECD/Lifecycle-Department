@@ -56,3 +56,10 @@ Choices that HANDOFF.md did not make. One line of reasoning each.
 38. The in-process scheduler calls the cron endpoint over HTTP instead of importing the mailer, because `instrumentation.ts` is compiled for every runtime and pulling sharp and pdf.js into it broke the edge compile.
 39. Reminder copy: "N campaigns are ready when you are". No guilt, no lead times.
 40. The `sendProvider` extension point is `lib/sendProvider.ts`; mark as sent calls it and the default provider does nothing.
+
+## Extras
+
+41. Arrow keys in the drawer move through the currently filtered and sorted list, not the whole bank, so the order matches what the reviewer sees. Keys are ignored while typing in the note box.
+42. "Copy link" for an existing reviewer issues a signed 45 day link (`/e/<sig>`) with a QR code instead of rotating the personal token, so a link already saved on the phone keeps working.
+43. The admin workspace page shows the last 8 thread entries under the bank; the full list stays on the Activity page.
+44. SQLite files live in `prisma/` because Prisma resolves `file:./dev.db` relative to the schema, not the project root. The e2e server deletes `prisma/e2e.db` before each run so every run starts clean. `prisma db push --force-reset` was not used because Prisma refuses it from AI agent sessions without explicit consent.

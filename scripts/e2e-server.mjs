@@ -24,13 +24,16 @@ const env = { ...process.env, ...E2E_ENV };
 const isWin = process.platform === 'win32';
 const npx = isWin ? 'npx.cmd' : 'npx';
 
-for (const f of ['e2e.db', 'e2e.db-journal']) rmSync(f, { force: true });
+// Prisma resolves "file:./e2e.db" relative to the prisma/ folder, so that is where the file lives.
+for (const f of ['prisma/e2e.db', 'prisma/e2e.db-journal', 'e2e.db', 'e2e.db-journal']) rmSync(f, { force: true });
 rmSync('storage-e2e', { recursive: true, force: true });
 
 const run = (args) => {
   const r = spawnSync(npx, args, { stdio: 'inherit', env, shell: isWin });
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
+// The file was just removed, so this creates a fresh schema. (No --force-reset: Prisma refuses it
+// from AI agent sessions, and deleting the throwaway file gives the same clean start.)
 run(['prisma', 'db', 'push', '--skip-generate']);
 run(['tsx', 'prisma/seed.ts']);
 
