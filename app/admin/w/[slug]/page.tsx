@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth';
 import { loadBank } from '@/lib/bank';
 import { Bank } from '@/components/Bank';
 import { AdminNav } from '@/components/AdminNav';
+import { ActivityFeed } from '@/components/ActivityFeed';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,9 @@ export default async function AdminWorkspacePage({ params }: { params: Promise<{
         <AdminNav slug={ws.slug} name={ws.name} current="bank" />
       </div>
       <Bank initial={bank} adminBase={base} />
+      <div className="app" style={{ marginTop: -50 }}>
+        <ActivityFeed workspaceId={ws.id} slug={ws.slug} timezone={ws.timezone} />
+      </div>
     </>
   );
 }
