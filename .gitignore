@@ -2,7 +2,7 @@ node_modules/
 .npm-cache/
 .next/
 out/
-storage/
+/storage/
 *.db
 *.db-journal
 .env
@@ -12,3 +12,5 @@ playwright-report/
 e2e/.auth/
 *.log
 .DS_Store
+tsconfig.tsbuildinfo
+.next-dev.log
