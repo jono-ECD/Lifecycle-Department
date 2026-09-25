@@ -1,0 +1,14 @@
+node_modules/
+.npm-cache/
+.next/
+out/
+storage/
+*.db
+*.db-journal
+.env
+.env.local
+test-results/
+playwright-report/
+e2e/.auth/
+*.log
+.DS_Store
