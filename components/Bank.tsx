@@ -132,13 +132,35 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     setNote('');
   }, []);
 
+  // ---- list ----
+  const rows = useMemo(() => {
+    const r = data.campaigns.filter((i) => (filter === 'all' ? true : filter === 'bank' ? i.status === 'approved' || i.status === 'hold' : i.status === filter));
+    return [...r].sort((x, y) => ORDER.indexOf(x.status) - ORDER.indexOf(y.status));
+  }, [data.campaigns, filter]);
+
+  // Keyboard: Escape closes the drawer, arrows move to the previous or next campaign in the current list.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && openId) closeDrawer();
+      if (!openId) return;
+      if (e.key === 'Escape') {
+        closeDrawer();
+        return;
+      }
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+      const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+      if (!forward && !back) return;
+      const idx = rows.findIndex((r) => r.id === openId);
+      if (idx < 0) return;
+      const next = forward ? idx + 1 : idx - 1;
+      if (next < 0 || next >= rows.length) return;
+      e.preventDefault();
+      openItem(rows[next].id);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [openId, closeDrawer]);
+  }, [openId, rows, closeDrawer, openItem]);
 
   useEffect(() => {
     document.body.style.overflow = openId ? 'hidden' : '';
@@ -203,12 +225,6 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const filled = data.days.filter((d) => d.scheduled.length > 0).length;
   const openDays = data.days.filter((d) => !d.blocked && d.scheduled.length < ws.maxPerDay).length;
   const windowLabel = ws.windowDays === 14 ? 'Next two weeks' : `Next ${ws.windowDays} days`;
-
-  // ---- list ----
-  const rows = useMemo(() => {
-    const r = data.campaigns.filter((i) => (filter === 'all' ? true : filter === 'bank' ? i.status === 'approved' || i.status === 'hold' : i.status === filter));
-    return [...r].sort((x, y) => ORDER.indexOf(x.status) - ORDER.indexOf(y.status));
-  }, [data.campaigns, filter]);
 
   // ---- slots for the open item ----
   const slotInput = useMemo(() => {
