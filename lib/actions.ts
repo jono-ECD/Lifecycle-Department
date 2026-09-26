@@ -8,6 +8,9 @@ import { dateToYmd, isYmd, todayYmd, ymdToDate } from '@/lib/dates';
 import { isStatus } from '@/lib/status';
 import { notifyStatusChange } from '@/lib/notify';
 import { getSendProvider } from '@/lib/sendProvider';
+import { emit } from '@/lib/integrations/dispatch';
+import { payloadFor } from '@/lib/integrations/payload';
+import type { IntegrationEventType } from '@/lib/integrations/types';
 
 export interface ActionInput {
   action: Action;
@@ -55,7 +58,7 @@ export async function performAction(campaignId: string, actor: Actor, input: Act
     data.reviewNotifiedAt = null;
   }
 
-  await db.$transaction([
+  const [, entry] = await db.$transaction([
     db.campaign.update({ where: { id: campaign.id }, data }),
     db.comment.create({
       data: {
@@ -83,15 +86,34 @@ export async function performAction(campaignId: string, actor: Actor, input: Act
 
   await notifyStatusChange({ campaignId: campaign.id, workspaceId: campaign.workspaceId, actor, action: input.action, from: campaign.status, to, note, date });
 
+  const eventType = EVENT_FOR_ACTION[input.action];
+  const payload = await payloadFor(campaign.id, actor, eventType, { text: note || undefined, commentId: entry.id, date });
+  if (payload) await emit(payload);
+
   return { toast: toastFor(input.action, date), workspaceId: campaign.workspaceId };
 }
+
+const EVENT_FOR_ACTION: Record<Action, IntegrationEventType> = {
+  approve: 'approved',
+  request_changes: 'change_request',
+  hold: 'hold',
+  back_to_review: 'back_to_review',
+  schedule: 'scheduled',
+  unschedule: 'unscheduled',
+  move_to_review: 'moved_to_review',
+  mark_sent: 'marked_sent',
+  move_date: 'scheduled',
+  reopen: 'hold',
+};
 
 export async function addComment(campaignId: string, actor: Actor, body: string) {
   const campaign = await db.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign || !actorCanAccess(actor, campaign.workspaceId)) throw new ApiError(404, 'That campaign is not here.');
-  await db.$transaction([
+  const [entry] = await db.$transaction([
     db.comment.create({ data: { campaignId, authorKind: actor.role, authorName: actor.name, authorId: actor.id, body, kind: 'comment' } }),
     db.campaign.update({ where: { id: campaignId }, data: { lastActivityAt: new Date() } }),
   ]);
+  const payload = await payloadFor(campaignId, actor, 'comment', { text: body, commentId: entry.id });
+  if (payload) await emit(payload);
   return { workspaceId: campaign.workspaceId };
 }

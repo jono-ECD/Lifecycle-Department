@@ -8,6 +8,7 @@ import { signEmailLink } from '@/lib/tokens';
 import { fmtShort, todayYmd } from '@/lib/dates';
 import { digestSubject, reminderDue, reminderSubject, selectDigest, selectReminders } from './rules';
 import type { StatusChangeEvent } from './index';
+import { contextLine, headline, type EventPayload } from '@/lib/integrations/types';
 
 const appUrl = () => env('APP_URL', 'http://localhost:3000').replace(/\/$/, '');
 const batchMs = () => Number(env('REVIEW_BATCH_MS', '600000')) || 600000;
@@ -57,6 +58,25 @@ export async function notifyStatusChangeImpl(ev: StatusChangeEvent): Promise<voi
     }
   } catch (err) {
     console.error('[notify] failed:', err);
+  }
+}
+
+// ---- pinned notes from the client to admins ----
+
+export async function notifyPin(p: EventPayload): Promise<void> {
+  try {
+    const admins = await db.adminUser.findMany({ select: { email: true } });
+    const heading = headline(p);
+    const { html, text } = renderMail({
+      heading,
+      intro: contextLine(p),
+      items: [{ name: p.campaign.name, sub: p.campaign.subtitle, thumbUrl: p.pin?.cropUrl ?? (await thumbFor(p.campaign.id, p.campaign.version)), line: p.text ? `Note: ${p.text}` : null }],
+      cta: { label: 'Open in the bank', url: p.links.admin },
+      footer: 'Sent to ECD admins by the Campaign Bank.',
+    });
+    await sendMail({ to: admins.map((a) => a.email), subject: heading, html, text }, { type: 'pin', workspaceId: p.workspace.id, campaignId: p.campaign.id });
+  } catch (err) {
+    console.error('[notify] pin email failed:', err);
   }
 }
 

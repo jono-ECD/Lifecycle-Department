@@ -1,0 +1,233 @@
+// Postgres variant. Use with: prisma db push --schema prisma/schema.postgres.prisma
+// Only DateTime, String, Int, Boolean are used so both providers work without changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  logoPath   String?
+  brandColor String?
+  timezone   String   @default("America/Chicago")
+  windowDays Int      @default(14)
+  maxPerDay  Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  campaigns   Campaign[]
+  reviewers   Reviewer[]
+  blocks      CalendarBlock[]
+  integration WorkspaceIntegration?
+  events      IntegrationEvent[]
+}
+
+// Per client connections. Agency level tokens (Asana, Figma) live in env; these are the per workspace targets.
+model WorkspaceIntegration {
+  id                 String   @id @default(cuid())
+  workspaceId        String   @unique
+  slackWebhookUrl    String?
+  slackQuietUpdates  Boolean  @default(false)
+  asanaProjectGid    String?
+  asanaSectionGid    String?
+  asanaAssigneeEmail String?
+  figmaFileKey       String?
+  webhookUrl         String?
+  webhookSecret      String?
+  updatedAt          DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// Outbox for everything sent to Slack, Asana and webhooks. Retried by the cron endpoint, visible to admins.
+model IntegrationEvent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+  type        String
+  target      String
+  status      String    @default("pending")
+  payload     String
+  result      String?
+  error       String?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Campaign {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  name             String
+  subtitle         String    @default("")
+  type             String    @default("promo")
+  status           String    @default("draft")
+  builtDate        DateTime
+  lastActivityAt   DateTime  @default(now())
+  scheduledDate    DateTime?
+  sentDate         DateTime?
+  position         Int       @default(0)
+  createdBy        String    @default("ECD")
+  currentVersion   Int       @default(0)
+  reviewEnteredAt  DateTime?
+  reviewNotifiedAt DateTime?
+  figmaUrl         String?
+  figmaNodeId      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assets    CampaignAsset[]
+  comments  Comment[]
+  pins      PinThread[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, scheduledDate])
+}
+
+model CampaignAsset {
+  id           String   @id @default(cuid())
+  campaignId   String
+  version      Int
+  kind         String
+  path         String
+  thumbPath    String?
+  width        Int?
+  height       Int?
+  orderIndex   Int
+  originalName String   @default("")
+  size         Int      @default(0)
+  uploadedAt   DateTime @default(now())
+  uploadedBy   String   @default("ECD")
+
+  campaign Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pins     PinThread[]
+
+  @@index([campaignId, version, orderIndex])
+}
+
+// A pinned note on a design, like a Figma comment. x, y, w, h are fractions of the image (0 to 1).
+// w and h are null for a point pin and set when the client marked an area.
+model PinThread {
+  id           String    @id @default(cuid())
+  campaignId   String
+  assetId      String
+  version      Int
+  number       Int
+  x            Float
+  y            Float
+  w            Float?
+  h            Float?
+  status       String    @default("open")
+  cropPath     String?
+  asanaTaskGid String?
+  authorKind   String
+  authorName   String
+  authorId     String?
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  campaign Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  asset    CampaignAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  comments PinComment[]
+
+  @@index([campaignId, number])
+}
+
+model PinComment {
+  id         String   @id @default(cuid())
+  threadId   String
+  authorKind String
+  authorName String
+  authorId   String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  thread PinThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}
+
+model Comment {
+  id           String   @id @default(cuid())
+  campaignId   String
+  authorKind   String
+  authorName   String
+  authorId     String?
+  body         String
+  kind         String   @default("comment")
+  fromStatus   String?
+  toStatus     String?
+  version      Int?
+  pinNumber    Int?
+  asanaTaskGid String?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+}
+
+model CalendarBlock {
+  id          String   @id @default(cuid())
+  workspaceId String
+  date        DateTime
+  label       String
+  createdBy   String   @default("ECD")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date])
+}
+
+model Reviewer {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  email       String
+  tokenHash   String    @unique
+  pinHash     String?
+  lastSeenAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  type        String
+  recipient   String
+  workspaceId String?
+  campaignId  String?
+  subject     String
+  dedupKey    String?  @unique
+  providerId  String?
+  sentAt      DateTime @default(now())
+
+  @@index([workspaceId, type, sentAt])
+}

@@ -6,6 +6,7 @@ import { dateToYmd, fmtLong, fmtShort, fmtStamp, todayYmd, dayOfMonth, weekday2,
 import { windowDates } from '@/lib/slots';
 import type { Actor } from '@/lib/auth';
 import type { CampaignType, Role, Status } from '@/lib/status';
+import { describePosition } from '@/lib/integrations/describe';
 
 export interface BankAsset {
   id: string;
@@ -24,7 +25,36 @@ export interface BankComment {
   when: string;
   body: string;
   kind: string;
+  pinNumber: number | null;
   files: { url: string; name: string }[];
+}
+
+export interface BankPinComment {
+  id: string;
+  who: string;
+  you: boolean;
+  when: string;
+  body: string;
+}
+
+export interface BankPin {
+  id: string;
+  assetId: string;
+  version: number;
+  em: number;
+  number: number;
+  x: number;
+  y: number;
+  w: number | null;
+  h: number | null;
+  status: 'open' | 'resolved';
+  position: string;
+  cropUrl: string | null;
+  author: string;
+  mine: boolean;
+  when: string;
+  resolvedBy: string | null;
+  comments: BankPinComment[];
 }
 
 export interface BankCampaign {
@@ -39,7 +69,10 @@ export interface BankCampaign {
   sent: Ymd | null;
   version: number;
   late: boolean;
+  figmaUrl: string | null;
+  openNotes: number;
   assets: BankAsset[];
+  pins: BankPin[];
   thread: BankComment[];
 }
 
@@ -69,10 +102,17 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
     db.campaign.findMany({
       where: { workspaceId: workspace.id },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { assets: { orderBy: [{ version: 'asc' }, { orderIndex: 'asc' }] }, comments: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        assets: { orderBy: [{ version: 'asc' }, { orderIndex: 'asc' }] },
+        comments: { orderBy: { createdAt: 'asc' } },
+        pins: { orderBy: { number: 'asc' }, include: { comments: { orderBy: { createdAt: 'asc' } } } },
+      },
     }),
     db.calendarBlock.findMany({ where: { workspaceId: workspace.id } }),
   ]);
+
+  const isMine = (kind: string, id: string | null) => kind === actor.role && id === actor.id;
+  const whoFor = (kind: string, name: string, id: string | null) => (isMine(kind, id) ? 'You' : kind === 'admin' ? (actor.role === 'admin' ? name : 'ECD') : kind === 'system' ? 'ECD' : name);
 
   const items: BankCampaign[] = campaigns.map((c) => {
     const current = c.assets.filter((a) => a.version === c.currentVersion);
@@ -83,6 +123,29 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
       byVersion.set(a.version, list);
     }
     const scheduled = c.scheduledDate ? dateToYmd(c.scheduledDate) : null;
+    const emIndex = (assetId: string, version: number) => {
+      const list = c.assets.filter((a) => a.version === version).sort((a, b) => a.orderIndex - b.orderIndex);
+      return list.findIndex((a) => a.id === assetId) + 1;
+    };
+    const pins: BankPin[] = c.pins.map((p) => ({
+      id: p.id,
+      assetId: p.assetId,
+      version: p.version,
+      em: emIndex(p.assetId, p.version),
+      number: p.number,
+      x: p.x,
+      y: p.y,
+      w: p.w,
+      h: p.h,
+      status: p.status === 'resolved' ? 'resolved' : 'open',
+      position: describePosition(p.x, p.y, p.w, p.h),
+      cropUrl: assetUrl(p.cropPath),
+      author: whoFor(p.authorKind, p.authorName, p.authorId),
+      mine: isMine(p.authorKind, p.authorId),
+      when: fmtStamp(p.createdAt, tz),
+      resolvedBy: p.resolvedBy,
+      comments: p.comments.map((m) => ({ id: m.id, who: whoFor(m.authorKind, m.authorName, m.authorId), you: isMine(m.authorKind, m.authorId) || (actor.role === 'admin' && m.authorKind === 'admin'), when: fmtStamp(m.createdAt, tz), body: m.body })),
+    }));
     return {
       id: c.id,
       name: c.name,
@@ -95,6 +158,8 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
       sent: c.sentDate ? todayYmd(tz, c.sentDate) : null,
       version: c.currentVersion,
       late: c.status === 'scheduled' && !!scheduled && scheduled < today,
+      figmaUrl: actor.role === 'admin' ? c.figmaUrl : null,
+      openNotes: pins.filter((p) => p.status === 'open' && p.version === c.currentVersion).length,
       assets: current.map((a) => ({
         id: a.id,
         kind: a.kind as 'image' | 'pdf',
@@ -104,19 +169,17 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
         height: a.height,
         name: a.originalName,
       })),
-      thread: c.comments.map((m) => {
-        const mine = actor.role === 'reviewer' ? m.authorKind === 'reviewer' && m.authorId === actor.id : false;
-        const who = mine ? 'You' : m.authorKind === 'admin' ? (actor.role === 'admin' ? m.authorName : 'ECD') : m.authorKind === 'system' ? 'ECD' : m.authorName;
-        return {
-          id: m.id,
-          who,
-          you: mine || (actor.role === 'admin' && m.authorKind === 'admin'),
-          when: fmtStamp(m.createdAt, tz),
-          body: m.body,
-          kind: m.kind,
-          files: m.version != null && m.version !== c.currentVersion ? (byVersion.get(m.version) ?? []) : [],
-        };
-      }),
+      pins,
+      thread: c.comments.map((m) => ({
+        id: m.id,
+        who: whoFor(m.authorKind, m.authorName, m.authorId),
+        you: isMine(m.authorKind, m.authorId) || (actor.role === 'admin' && m.authorKind === 'admin'),
+        when: fmtStamp(m.createdAt, tz),
+        body: m.body,
+        kind: m.kind,
+        pinNumber: m.pinNumber,
+        files: m.version != null && m.version !== c.currentVersion ? (byVersion.get(m.version) ?? []) : [],
+      })),
     };
   });
 

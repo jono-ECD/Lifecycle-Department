@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { ApiError, handler, json, parseWith, requireAdminActor } from '@/lib/api';
 import { ymdToDate } from '@/lib/dates';
 import { CampaignFields, addVersion, applyAdminStatus, filesFrom } from '@/lib/admin';
+import { parseFigmaUrl } from '@/lib/integrations/figma';
 
 const Body = CampaignFields.extend({ workspaceId: z.string().min(1) });
 
@@ -27,6 +28,8 @@ export const POST = handler(async (req) => {
       builtDate: ymdToDate(input.builtDate),
       position: (last._max.position ?? 0) + 1,
       createdBy: actor.name,
+      figmaUrl: input.figmaUrl || null,
+      figmaNodeId: input.figmaUrl ? (parseFigmaUrl(input.figmaUrl)?.nodeId ?? null) : null,
     },
   });
   if (files.length) await addVersion(c.id, files, actor);

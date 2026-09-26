@@ -9,10 +9,19 @@ import { dateToYmd, isYmd, todayYmd, ymdToDate } from '@/lib/dates';
 import { STATUS, STATUS_KEYS, TYPE_KEYS } from '@/lib/status';
 import { notifyStatusChange } from '@/lib/notify';
 import type { Actor } from '@/lib/auth';
+import { emit } from '@/lib/integrations/dispatch';
+import { payloadFor } from '@/lib/integrations/payload';
+import { parseFigmaUrl } from '@/lib/integrations/figma';
 
 export const CampaignFields = z.object({
   name: z.string().trim().min(1, 'Give the campaign a name.').max(200),
   subtitle: z.string().trim().max(300).default(''),
+  figmaUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((s) => !s || !!parseFigmaUrl(s), 'That does not look like a Figma link.')
+    .optional(),
   type: z.enum(TYPE_KEYS as [string, ...string[]]).default('promo'),
   builtDate: z.string().refine(isYmd, 'Built date must be a date.'),
   status: z.enum(STATUS_KEYS as [string, ...string[]]).default('draft'),
@@ -60,6 +69,8 @@ export async function addVersion(campaignId: string, files: IncomingFile[], acto
       },
     }),
   ]);
+  const payload = await payloadFor(campaignId, actor, 'version_uploaded');
+  if (payload) await emit(payload);
   return { version, assets };
 }
 
@@ -116,6 +127,8 @@ export async function applyAdminStatus(campaignId: string, actor: Actor, status:
   ]);
   if (status === 'review' && c.status !== 'review') {
     await notifyStatusChange({ campaignId: c.id, workspaceId: c.workspaceId, actor, action: 'move_to_review', from: c.status as never, to: 'review', note: '' });
+    const payload = await payloadFor(c.id, actor, 'moved_to_review');
+    if (payload) await emit(payload);
   }
 }
 
