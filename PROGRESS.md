@@ -74,6 +74,13 @@ Admin: http://localhost:3000/admin with `mauricio@ecdigitalstrategy.com` and `ca
 - Editor: Figma link field and "Pull frame from Figma" when the token is set.
 - Tests: 65 unit tests, 24 end to end tests including pins at 1280 and 390 and the Connections page.
 
+### What to look at first, second session
+
+1. Reviewer link, open "Born For Us, Made For You", click "Leave a note on the design", tap the design, type, Enter. Then drag a box on the design for an area note. Watch the note list, the thread entry with the pin number, and the badge on the card.
+2. Admin, same campaign: reply on the note, Mark done, then "Show 1 done note". Notes from older versions keep their crop under "Notes on earlier versions" after a new upload.
+3. Admin, Connections: paste a Slack incoming webhook URL, Save, "Send a test message". Then leave a note as the reviewer and watch the channel: the words verbatim, campaign, EM number, version, position, crop and button. Asana needs `ASANA_ACCESS_TOKEN` in `.env` and a project GID; Figma needs `FIGMA_ACCESS_TOKEN` and the frame link in the editor.
+4. Deliveries at the bottom of Connections show every Slack, Asana and webhook send with status and a Retry.
+
 ### Problems and fixes in this session
 
 - Prisma refuses to regenerate the client while the dev server holds the engine file on Windows. Stop the dev server before `prisma generate`.
