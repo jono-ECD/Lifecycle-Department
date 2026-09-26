@@ -1,12 +1,14 @@
 'use client';
 
 // The bank page and the campaign drawer. A port of the prototype's render functions; same markup, same classes.
+// Pinned notes on the design live in PinLayer and the "Notes on the design" section of the drawer.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { BankCampaign, BankPayload } from '@/lib/bank';
+import type { BankCampaign, BankPayload, BankPin } from '@/lib/bank';
 import { ORDER, STATUS, TYPES, type Status } from '@/lib/status';
 import { actionsFor, NOTE_REQUIRED, type Action, type ActionDef } from '@/lib/transitions';
 import { openSlots, windowDates } from '@/lib/slots';
 import { fmtShort } from '@/lib/dates';
+import { PinLayer, type Draft } from '@/components/PinLayer';
 
 type Filter = 'all' | 'bank' | Status;
 type View = 'gallery' | 'list';
@@ -57,6 +59,13 @@ function PencilIcon() {
     </svg>
   );
 }
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5H4l2-3a8.5 8.5 0 1 1 15-5.5z" />
+    </svg>
+  );
+}
 
 export function EmptyWorkspace({ admin }: { admin: boolean }) {
   return (
@@ -85,6 +94,11 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ msg: string; on: boolean }>({ msg: '', on: false });
+  const [placing, setPlacing] = useState(false);
+  const [activePin, setActivePin] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [showDone, setShowDone] = useState(false);
+  const [wantPin, setWantPin] = useState<number | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const busyRef = useRef(false);
@@ -102,7 +116,7 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   // Polling every 30 seconds keeps the page fresh without real time plumbing.
   useEffect(() => {
     const id = setInterval(async () => {
-      if (busyRef.current || document.hidden) return;
+      if (busyRef.current || document.hidden || draft) return;
       try {
         const r = await fetch(`/api/bank?workspace=${encodeURIComponent(ws.id)}`, { cache: 'no-store' });
         if (r.ok) setData(await r.json());
@@ -111,7 +125,7 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
       }
     }, POLL_MS);
     return () => clearInterval(id);
-  }, [ws.id]);
+  }, [ws.id, draft]);
 
   const counts = useMemo(() => {
     const c: Partial<Record<Status, number>> = {};
@@ -124,13 +138,45 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const closeDrawer = useCallback(() => {
     setOpenId(null);
     setPicker(null);
+    setPlacing(false);
+    setActivePin(null);
+    setDraft(null);
   }, []);
 
   const openItem = useCallback((id: string) => {
     setOpenId(id);
     setPicker(null);
     setNote('');
+    setPlacing(false);
+    setActivePin(null);
+    setDraft(null);
   }, []);
+
+  // Deep links: ?c=<campaign>&pin=<number> open the drawer and focus a note (used by emails, Slack and Asana).
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const c = sp.get('c');
+    if (c && initial.campaigns.some((x) => x.id === c)) {
+      openItem(c);
+      const n = Number(sp.get('pin'));
+      if (n) setWantPin(n);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!open || wantPin === null) return;
+    const pin = open.pins.find((p) => p.number === wantPin);
+    setWantPin(null);
+    if (pin) focusPin(pin);
+  }, [open, wantPin]);
+
+  function focusPin(pin: BankPin) {
+    if (pin.status === 'resolved') setShowDone(true);
+    setActivePin(pin.id);
+    setDraft(null);
+    setTimeout(() => document.querySelector<HTMLElement>(`.pin[data-pin="${pin.number}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50);
+  }
 
   // ---- list ----
   const rows = useMemo(() => {
@@ -138,12 +184,15 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     return [...r].sort((x, y) => ORDER.indexOf(x.status) - ORDER.indexOf(y.status));
   }, [data.campaigns, filter]);
 
-  // Keyboard: Escape closes the drawer, arrows move to the previous or next campaign in the current list.
+  // Keyboard: Escape backs out one step (draft, note, pin mode, drawer). Arrows move between campaigns.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!openId) return;
       if (e.key === 'Escape') {
-        closeDrawer();
+        if (draft) setDraft(null);
+        else if (activePin) setActivePin(null);
+        else if (placing) setPlacing(false);
+        else closeDrawer();
         return;
       }
       const t = e.target as HTMLElement | null;
@@ -160,7 +209,7 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [openId, rows, closeDrawer, openItem]);
+  }, [openId, rows, closeDrawer, openItem, draft, activePin, placing]);
 
   useEffect(() => {
     document.body.style.overflow = openId ? 'hidden' : '';
@@ -169,24 +218,22 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     };
   }, [openId]);
 
-  async function post(url: string, body: unknown): Promise<boolean> {
+  async function post(url: string, body: unknown, method = 'POST'): Promise<{ ok: boolean; threadId?: string }> {
     setBusy(true);
     busyRef.current = true;
     try {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const j = (await r.json().catch(() => ({}))) as { error?: string; toast?: string; bank?: BankPayload };
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; toast?: string; bank?: BankPayload; threadId?: string };
       if (!r.ok) {
         showToast(j.error || 'Something went wrong. Try again.');
-        return false;
+        return { ok: false };
       }
       if (j.bank) setData(j.bank);
-      setNote('');
-      setPicker(null);
       if (j.toast) showToast(j.toast);
-      return true;
+      return { ok: true, threadId: j.threadId };
     } catch {
       showToast('No connection. Try again.');
-      return false;
+      return { ok: false };
     } finally {
       setBusy(false);
       busyRef.current = false;
@@ -203,17 +250,49 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
       noteRef.current?.focus();
       return;
     }
-    void post(`/api/campaigns/${item.id}/transition`, { action: def.action, note: note.trim() || undefined });
+    void post(`/api/campaigns/${item.id}/transition`, { action: def.action, note: note.trim() || undefined }).then((r) => {
+      if (r.ok) {
+        setNote('');
+        setPicker(null);
+      }
+    });
   }
 
   function pickSlot(item: BankCampaign, date: string) {
     if (!picker) return;
-    void post(`/api/campaigns/${item.id}/transition`, { action: picker, date, note: note.trim() || undefined });
+    void post(`/api/campaigns/${item.id}/transition`, { action: picker, date, note: note.trim() || undefined }).then((r) => {
+      if (r.ok) {
+        setNote('');
+        setPicker(null);
+      }
+    });
   }
 
   function sendNote(item: BankCampaign) {
     if (!note.trim()) return;
-    void post(`/api/campaigns/${item.id}/comments`, { body: note.trim() });
+    void post(`/api/campaigns/${item.id}/comments`, { body: note.trim() }).then((r) => r.ok && setNote(''));
+  }
+
+  // ---- pinned notes ----
+  function submitDraft(item: BankCampaign, body: string) {
+    if (!draft) return;
+    void post(`/api/campaigns/${item.id}/pins`, { assetId: draft.assetId, x: draft.x, y: draft.y, w: draft.w, h: draft.h, body }).then((r) => {
+      if (r.ok) {
+        setDraft(null);
+        setPlacing(false);
+        if (r.threadId) setActivePin(r.threadId);
+      }
+    });
+  }
+  function replyPin(id: string, body: string) {
+    void post(`/api/pins/${id}`, { op: 'reply', body });
+  }
+  function resolvePin(id: string, resolved: boolean) {
+    void post(`/api/pins/${id}`, { op: 'resolve', resolved });
+  }
+  function deletePin(id: string) {
+    if (!window.confirm('Remove this note?')) return;
+    void post(`/api/pins/${id}`, undefined, 'DELETE').then((r) => r.ok && setActivePin(null));
   }
 
   // ---- headline ----
@@ -239,6 +318,11 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const cardOf = (i: BankCampaign) => i.assets[0] ?? null;
 
   const actions = open ? actionsFor(open.status, role) : [];
+  const currentPins = open ? open.pins.filter((p) => p.version === open.version) : [];
+  const earlierPins = open ? open.pins.filter((p) => p.version !== open.version) : [];
+  const openCount = currentPins.filter((p) => p.status === 'open').length;
+  const doneCount = currentPins.length - openCount;
+  const hasImages = !!open && open.assets.some((as) => as.kind === 'image');
 
   return (
     <>
@@ -373,6 +457,12 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                     </div>
                   )}
                   <span className={'pill ' + i.status}>{STATUS[i.status]}</span>
+                  {i.openNotes > 0 && (
+                    <span className="notesbadge" title={`${i.openNotes} open note${i.openNotes > 1 ? 's' : ''} on the design`}>
+                      <i />
+                      {i.openNotes} note{i.openNotes > 1 ? 's' : ''}
+                    </span>
+                  )}
                   {adminBase && (
                     <a className="edit" href={editHref(i.id)} aria-label="Edit" onClick={(e) => e.stopPropagation()}>
                       <PencilIcon />
@@ -413,7 +503,14 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                   )}
                   <div className="t">
                     <b>{i.name}</b>
-                    <span>{i.sub}</span>
+                    <span>
+                      {i.sub}
+                      {i.openNotes > 0 && (
+                        <span className="notesbadge">
+                          {i.openNotes} note{i.openNotes > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <div className="type">
                     <i className={i.type} />
@@ -430,20 +527,67 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
 
       <div className={'scrim' + (open ? ' on' : '')} id="scrim" onClick={closeDrawer} />
       <aside className={'drawer' + (open ? ' on' : '')} id="drawer" aria-hidden={!open}>
-        <div className="preview" id="preview">
+        <div className="preview" id="preview" onClick={() => activePin && !draft && setActivePin(null)}>
           {open && open.assets.length > 0 ? (
             <div className="stack">
+              {hasImages && (
+                <div className="ptools" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className={'pinbtn' + (placing ? ' on' : '')}
+                    data-testid="pin-mode"
+                    onClick={() => {
+                      setPlacing((v) => !v);
+                      setDraft(null);
+                      setActivePin(null);
+                    }}
+                  >
+                    <PinIcon />
+                    {placing ? 'Done placing' : 'Leave a note on the design'}
+                    {!placing && openCount > 0 && <span className="n">{openCount}</span>}
+                  </button>
+                  {placing && !draft && <span className="hint">Tap the design where the note goes. Drag to mark an area.</span>}
+                </div>
+              )}
               {open.assets.map((as) =>
                 as.kind === 'image' ? (
-                  <a key={as.id} href={as.url} target="_blank" rel="noreferrer" title="Open full size">
-                    <img src={as.url} alt="" width={as.width ?? undefined} height={as.height ?? undefined} />
-                  </a>
+                  <PinLayer
+                    key={as.id}
+                    asset={as}
+                    pins={currentPins.filter((p) => p.assetId === as.id)}
+                    isAdmin={isAdmin}
+                    placing={placing}
+                    activeId={activePin}
+                    draft={draft}
+                    showDone={showDone}
+                    busy={busy}
+                    onPlace={(d) => {
+                      setDraft(d);
+                      setActivePin(null);
+                    }}
+                    onSelect={(id) => {
+                      setActivePin(id);
+                      setDraft(null);
+                    }}
+                    onCancelDraft={() => setDraft(null)}
+                    onSubmitDraft={(body) => submitDraft(open, body)}
+                    onReply={replyPin}
+                    onResolve={resolvePin}
+                    onDelete={deletePin}
+                  />
                 ) : (
                   <a key={as.id} className="pdfcard" href={as.url} target="_blank" rel="noreferrer">
                     {as.thumbUrl ? <img src={as.thumbUrl} alt="" style={{ boxShadow: 'none', borderRadius: 8 }} /> : <PdfIcon />}
                     <span>Open the PDF</span>
                   </a>
                 ),
+              )}
+              {hasImages && !placing && (
+                <div className="small" style={{ textAlign: 'center', paddingBottom: 8 }}>
+                  <a className="link" href={open.assets.find((as) => as.kind === 'image')?.url} target="_blank" rel="noreferrer">
+                    Open full size
+                  </a>
+                </div>
               )}
             </div>
           ) : open ? (
@@ -485,6 +629,16 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                   <>
                     <span>Sent</span>
                     <b>{fmtShort(open.sent)}</b>
+                  </>
+                )}
+                {open.figmaUrl && (
+                  <>
+                    <span>Figma</span>
+                    <b>
+                      <a className="link" href={open.figmaUrl} target="_blank" rel="noreferrer">
+                        Open in Figma
+                      </a>
+                    </b>
                   </>
                 )}
               </div>
@@ -529,9 +683,62 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                   </div>
                 )}
               </div>
+              {hasImages && (
+                <div className="notes" id="notes">
+                  <div className="k">
+                    Notes on the design <span>{openCount ? `${openCount} open` : currentPins.length ? 'all done' : ''}</span>
+                  </div>
+                  {currentPins.length === 0 && <div className="empty-notes">{isAdmin ? 'No notes on this version yet.' : 'Tap "Leave a note on the design" to point at exactly what should change.'}</div>}
+                  {currentPins
+                    .filter((p) => showDone || p.status === 'open')
+                    .map((p) => (
+                      <button key={p.id} type="button" className={'noteitem' + (p.id === activePin ? ' on' : '') + (p.status === 'resolved' ? ' done' : '')} onClick={() => focusPin(p)} data-testid="note-item">
+                        <span className="num">{p.number}</span>
+                        <span className="t">
+                          <div>{p.comments[0]?.body}</div>
+                          <span>
+                            {p.author} · {p.when}
+                            {open.assets.length > 1 ? ` · EM${p.em}` : ''}
+                            {p.comments.length > 1 ? ` · ${p.comments.length - 1} repl${p.comments.length - 1 === 1 ? 'y' : 'ies'}` : ''}
+                          </span>
+                        </span>
+                        {p.status === 'resolved' ? <span className="st">Done</span> : <span />}
+                      </button>
+                    ))}
+                  {doneCount > 0 && (
+                    <button type="button" className="toggle" onClick={() => setShowDone((v) => !v)}>
+                      {showDone ? 'Hide done notes' : `Show ${doneCount} done note${doneCount > 1 ? 's' : ''}`}
+                    </button>
+                  )}
+                  {earlierPins.length > 0 && (
+                    <>
+                      <div className="k" style={{ marginTop: 6 }}>
+                        Notes on earlier versions
+                      </div>
+                      {earlierPins.map((p) => (
+                        <div key={p.id} className={'noteitem' + (p.status === 'resolved' ? ' done' : '')} style={{ cursor: 'default' }}>
+                          <span className="num">{p.number}</span>
+                          <span className="t">
+                            <div>{p.comments[0]?.body}</div>
+                            <span>
+                              {p.author} · {p.when} · version {p.version}
+                            </span>
+                          </span>
+                          {p.cropUrl ? <img src={p.cropUrl} alt="" /> : <span />}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
               <div className="thread" id="thread">
                 {open.thread.map((m) => (
                   <div key={m.id} className={'msg' + (m.you ? ' you' : '') + (m.kind === 'system' ? ' sys' : '')}>
+                    {m.pinNumber != null && (
+                      <button type="button" className="pinref" title={`Show note ${m.pinNumber}`} onClick={() => open.pins.find((p) => p.number === m.pinNumber) && focusPin(open.pins.find((p) => p.number === m.pinNumber)!)}>
+                        {m.pinNumber}
+                      </button>
+                    )}
                     <b>{m.who}</b>
                     <span>{m.when}</span>
                     <div>{m.body}</div>
