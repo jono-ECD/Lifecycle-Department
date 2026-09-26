@@ -86,3 +86,4 @@ Admin: http://localhost:3000/admin with `mauricio@ecdigitalstrategy.com` and `ca
 - Prisma refuses to regenerate the client while the dev server holds the engine file on Windows. Stop the dev server before `prisma generate`.
 - Next forbids extra exports from route files; the env status helper moved to `lib/integrations/env.ts`.
 - Designs are very tall, so end to end drags near the middle of the image were outside the viewport. Tests now drag near the top.
+- 2026-09-25: Email previews were shrunk to 400px and looked wrong to clients. The drawer now shows designs at their real width with zoom controls (minus, plus, Fit, percentage) and a wider preview column. Verified at 1280 and 390 with screenshots.

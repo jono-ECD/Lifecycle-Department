@@ -46,6 +46,13 @@ test('request changes without a note is refused with the prototype toast', async
   await expectToast(page, 'Add a short note so ECD knows what to change.');
   await expect(page.locator('#dpill')).toHaveText('In review');
   await expect(page.locator('#note')).toBeFocused();
+  // the email shows at its real width, not shrunk: the seeded designs are 520px wide
+  await expect(page.locator('[data-testid=zoom-pct]')).toHaveText('100%');
+  expect((await page.locator('.pinlayer img').first().boundingBox())!.width).toBeGreaterThanOrEqual(519);
+  await page.locator('.zoom button[aria-label="Zoom in"]').click();
+  await expect(page.locator('[data-testid=zoom-pct]')).toHaveText('125%');
+  await page.locator('.zoom button.fit').click();
+  await expect(page.locator('[data-testid=zoom-pct]')).toHaveText('100%');
   await shot(page, 'reviewer-drawer-1280.png');
 });
 

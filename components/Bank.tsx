@@ -99,6 +99,9 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const [draft, setDraft] = useState<Draft | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [wantPin, setWantPin] = useState<number | null>(null);
+  const [zoom, setZoom] = useState<number | 'fit'>('fit');
+  const [previewWidth, setPreviewWidth] = useState(0);
+  const previewRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const busyRef = useRef(false);
@@ -150,6 +153,18 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     setPlacing(false);
     setActivePin(null);
     setDraft(null);
+    setZoom('fit');
+  }, []);
+
+  // Width available for the design inside the preview, so "Fit" and "100%" can be computed.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const measure = () => setPreviewWidth(el.clientWidth - 44);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   // Deep links: ?c=<campaign>&pin=<number> open the drawer and focus a note (used by emails, Slack and Asana).
@@ -323,6 +338,19 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const openCount = currentPins.filter((p) => p.status === 'open').length;
   const doneCount = currentPins.length - openCount;
   const hasImages = !!open && open.assets.some((as) => as.kind === 'image');
+
+  // An email is shown at its real width. Exports wider than 900px are treated as 2x and halved.
+  const firstImage = open?.assets.find((as) => as.kind === 'image');
+  const emailWidth = firstImage?.width ? (firstImage.width > 900 ? Math.round(firstImage.width / 2) : firstImage.width) : 600;
+  const fitZoom = previewWidth > 0 ? Math.min(1, previewWidth / emailWidth) : 1;
+  const zoomValue = zoom === 'fit' ? fitZoom : zoom;
+  const stackWidth = Math.round(emailWidth * zoomValue);
+  const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const zoomStep = (dir: 1 | -1) => {
+    const cur = zoomValue;
+    const next = dir > 0 ? ZOOMS.find((z) => z > cur + 0.001) : [...ZOOMS].reverse().find((z) => z < cur - 0.001);
+    if (next) setZoom(next);
+  };
 
   return (
     <>
@@ -527,9 +555,9 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
 
       <div className={'scrim' + (open ? ' on' : '')} id="scrim" onClick={closeDrawer} />
       <aside className={'drawer' + (open ? ' on' : '')} id="drawer" aria-hidden={!open}>
-        <div className="preview" id="preview" onClick={() => activePin && !draft && setActivePin(null)}>
+        <div className="preview" id="preview" ref={previewRef} onClick={() => activePin && !draft && setActivePin(null)}>
           {open && open.assets.length > 0 ? (
-            <div className="stack">
+            <div className="stack" style={{ width: stackWidth }} data-testid="design-stack">
               {hasImages && (
                 <div className="ptools" onClick={(e) => e.stopPropagation()}>
                   <button
@@ -547,6 +575,22 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                     {!placing && openCount > 0 && <span className="n">{openCount}</span>}
                   </button>
                   {placing && !draft && <span className="hint">Tap the design where the note goes. Drag to mark an area.</span>}
+                  {!placing && (
+                    <span className="zoom" aria-label="Zoom">
+                      <button type="button" aria-label="Zoom out" onClick={() => zoomStep(-1)} disabled={zoomValue <= 0.5}>
+                        −
+                      </button>
+                      <span className="pct" data-testid="zoom-pct">
+                        {Math.round(zoomValue * 100)}%
+                      </span>
+                      <button type="button" aria-label="Zoom in" onClick={() => zoomStep(1)} disabled={zoomValue >= 2}>
+                        +
+                      </button>
+                      <button type="button" className={'fit' + (zoom === 'fit' ? ' on' : '')} onClick={() => setZoom(zoom === 'fit' ? 1 : 'fit')} title="Fit the width, or show at the real email width">
+                        {zoom === 'fit' ? 'Fit' : '100%'}
+                      </button>
+                    </span>
+                  )}
                 </div>
               )}
               {open.assets.map((as) =>
