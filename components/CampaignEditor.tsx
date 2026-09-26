@@ -23,6 +23,7 @@ export interface EditorCampaign {
   status: string;
   builtDate: string;
   scheduledDate: string;
+  figmaUrl: string;
   currentVersion: number;
   assets: EditorAsset[];
 }
@@ -83,15 +84,16 @@ function FileList<T>({ items, label, thumb, onChange }: { items: T[]; label: (t:
   );
 }
 
-export function CampaignEditor({ workspaceId, base, campaign }: { workspaceId: string; base: string; campaign: EditorCampaign | null }) {
+export function CampaignEditor({ workspaceId, base, campaign, today, figmaEnabled }: { workspaceId: string; base: string; campaign: EditorCampaign | null; today: string; figmaEnabled: boolean }) {
   const isNew = !campaign;
   const [f, setF] = useState({
     name: campaign?.name ?? '',
     subtitle: campaign?.subtitle ?? '',
     type: campaign?.type ?? 'promo',
     status: campaign?.status ?? 'draft',
-    builtDate: campaign?.builtDate ?? new Date().toISOString().slice(0, 10),
+    builtDate: campaign?.builtDate ?? today,
     scheduledDate: campaign?.scheduledDate ?? '',
+    figmaUrl: campaign?.figmaUrl ?? '',
   });
   const [pending, setPending] = useState<File[]>([]);
   const [previews, setPreviews] = useState<Map<File, string>>(new Map());
@@ -161,6 +163,18 @@ export function CampaignEditor({ workspaceId, base, campaign }: { workspaceId: s
     setMsg({ kind: 'ok', text: 'Saved.' });
   }
 
+  async function pullFigma() {
+    if (!campaign) return;
+    setBusy(true);
+    setMsg(null);
+    const r = await api<{ version: number }>(`/api/admin/campaigns/${campaign.id}/figma-import`, { body: { url: f.figmaUrl } });
+    if (!r.ok) {
+      setBusy(false);
+      return setMsg({ kind: 'err', text: r.error });
+    }
+    window.location.href = `${base}/campaigns/${campaign.id}/edit?saved=1`;
+  }
+
   async function remove() {
     if (!campaign) return;
     if (!window.confirm(`Delete "${campaign.name}" and its files? This cannot be undone.`)) return;
@@ -218,6 +232,22 @@ export function CampaignEditor({ workspaceId, base, campaign }: { workspaceId: s
           </label>
         )}
       </div>
+
+      <label>
+        <b>Figma link, optional</b>
+        <input type="text" value={f.figmaUrl} onChange={(e) => set('figmaUrl', e.target.value)} placeholder="https://www.figma.com/design/FILEKEY/Name?node-id=12-34" />
+        <span className="small">
+          Select the frame in Figma and copy its link so it includes node-id.{' '}
+          {isNew ? 'Save first, then pull the frame.' : figmaEnabled ? 'Pull the frame to store it as the next version.' : 'Pulling frames needs FIGMA_ACCESS_TOKEN in the environment; the link is kept either way.'}
+        </span>
+        {!isNew && (
+          <span>
+            <button type="button" className="btn sm" disabled={busy || !f.figmaUrl || !figmaEnabled} onClick={pullFigma}>
+              Pull frame from Figma
+            </button>
+          </span>
+        )}
+      </label>
 
       {current.length > 0 && (
         <div>

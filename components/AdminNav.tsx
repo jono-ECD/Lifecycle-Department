@@ -1,5 +1,5 @@
 // Top strip for admin pages. Server component, plain links.
-export function AdminNav({ slug, name, current }: { slug?: string; name?: string; current?: 'workspaces' | 'bank' | 'new' | 'activity' | 'settings' | 'team' }) {
+export function AdminNav({ slug, name, current }: { slug?: string; name?: string; current?: 'workspaces' | 'bank' | 'new' | 'activity' | 'settings' | 'integrations' | 'team' }) {
   const base = slug ? `/admin/w/${slug}` : '';
   return (
     <div className="admin-top">
@@ -23,6 +23,9 @@ export function AdminNav({ slug, name, current }: { slug?: string; name?: string
             </a>
             <a href={`${base}/settings`} className={current === 'settings' ? 'on' : ''}>
               Reviewers and calendar
+            </a>
+            <a href={`${base}/integrations`} className={current === 'integrations' ? 'on' : ''}>
+              Connections
             </a>
           </>
         )}

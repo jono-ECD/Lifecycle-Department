@@ -44,6 +44,8 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 | `RUN_SCHEDULER` | path 1 | `1` to run reminders in process |
 | `REVIEW_BATCH_MS` | optional | Default 600000 |
 | `SEED_REVIEWER_TOKEN` | never in production | Leave unset so the seed makes a random link |
+| `ASANA_ACCESS_TOKEN` | optional | Agency Asana token. Without it Asana connections show "Token missing" and nothing is sent |
+| `FIGMA_ACCESS_TOKEN` | optional | Agency Figma token. Without it the Figma link is kept but frames cannot be pulled |
 | `NEXT_TELEMETRY_DISABLED` | optional | `1` |
 
 ## Running the seed
@@ -52,7 +54,9 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 
 ## Setting the cron
 
-The endpoint is `GET` or `POST /api/cron/reminders`. Authenticate with `Authorization: Bearer <CRON_SECRET>` or `?secret=<CRON_SECRET>`. It sends reminders due today (at or after 9:00 workspace time, once per day per workspace) and flushes review digests whose batch window has passed. Safe to call as often as you like; nothing is sent twice.
+The endpoint is `GET` or `POST /api/cron/reminders`. Authenticate with `Authorization: Bearer <CRON_SECRET>` or `?secret=<CRON_SECRET>`. It sends reminders due today (at or after 9:00 workspace time, once per day per workspace), flushes review digests whose batch window has passed, and retries failed Slack, Asana and webhook deliveries. Safe to call as often as you like; nothing is sent twice.
+
+Slack image previews need `APP_URL` to be a public https address, since Slack fetches the crop from the app. On localhost the crop link is still in the message text.
 
 Run it hourly. Examples:
 

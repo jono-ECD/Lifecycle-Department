@@ -53,6 +53,8 @@ Copy `.env.example` to `.env` (the scripts do this for you). Everything has a wo
 | `RUN_SCHEDULER` | `1` runs the reminder job inside the app every 15 minutes |
 | `REVIEW_BATCH_MS` | How long to wait before emailing reviewers about new items in review, default 10 minutes |
 | `SEED_REVIEWER_TOKEN` | Fixed reviewer token for local development. Remove in production |
+| `ASANA_ACCESS_TOKEN` | Agency Asana personal access token. Per client projects are set in Connections |
+| `FIGMA_ACCESS_TOKEN` | Agency Figma personal access token, file read scope |
 
 ## Roles
 
@@ -99,6 +101,25 @@ A rolling window from today in the workspace timezone, 14 days by default. Block
 - Nothing is sent for comments alone.
 
 Every send writes a `NotificationLog` row. Without `RESEND_API_KEY` the rendered email prints to the server console.
+
+## Pinned notes on the design
+
+Clients can point at exactly what should change, the way they do in Figma. In the drawer, "Leave a note on the design" turns on note mode: tap the design to drop a numbered pin, or drag to mark an area. A small card opens next to the pin to write the note (Enter posts). Pins open a thread with replies. The side panel lists every note with author, date and email number; done notes hide behind a toggle. Only ECD can mark a note done or reopen it. Notes are attached to a specific version, so a new upload starts clean and earlier notes stay listed with a crop of their area.
+
+When a note is created the server crops the marked area, draws the marker on it, and sends that crop with the note to the admin email, Slack and Asana. Deep links `?c=<campaign>&pin=<number>` open the drawer on that note.
+
+## Connections (Slack, Asana, Figma, webhooks)
+
+Each workspace has a Connections page in the admin. Agency tokens live in env, per client targets in the database.
+
+| Connection | Set where | What happens |
+|---|---|---|
+| Slack | Incoming webhook URL per workspace | Every change request and pinned note posts with the words of the client verbatim, campaign, email number, version, position, a crop of the area and an "Open in the bank" button. Status changes post as one line, or not at all with the quiet toggle. |
+| Asana | `ASANA_ACCESS_TOKEN` in env, project GID (and optional section and assignee) per workspace | Change requests, plain notes and pinned notes from the client become tasks: the words of the client first, then context and links, crop attached. Replies become task comments; marking a note done completes the task. |
+| Figma | `FIGMA_ACCESS_TOKEN` in env, file key per workspace, link per campaign | Campaign editor keeps a Figma link and can pull the frame as the next version. The client can list frames and comments for a later import. |
+| Webhook | URL and secret per workspace | Every event as JSON, signed with HMAC SHA-256 in `X-Bank-Signature`, for Zapier, Make or n8n. |
+
+Every delivery is logged (`IntegrationEvent`), retried with backoff by the cron endpoint, and visible on the Connections page with a Retry button. Each connection has a test button. Nothing is sent for a workspace until a target is saved.
 
 ## Sending
 

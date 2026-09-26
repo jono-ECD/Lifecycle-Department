@@ -63,3 +63,19 @@ Admin: http://localhost:3000/admin with `mauricio@ecdigitalstrategy.com` and `ca
 2. `/admin/w/blessed-botanicals`: Add campaign with two images, then open it and Move to review. With no `RESEND_API_KEY` the email prints in the terminal running `npm run dev`. `GET /api/cron/reminders?secret=change-me&force=1` flushes the digest immediately instead of waiting 10 minutes.
 3. `/admin/w/blessed-botanicals/settings`: Copy link shows the QR. New link rotates the token. Block a day and see the slot picker skip it.
 4. `e2e/screenshots/` for every screen at both widths, and DEPLOY.md when you are ready to put it on Railway or Fly.
+
+## Second session, 2026-09-25: connections and pinned notes
+
+- Asked three questions first. Answers: Slack per client channel only; Asana tasks for change requests and pinned notes with the words of the client verbatim and full context; only ECD marks notes done.
+- Schema: `WorkspaceIntegration` (Slack webhook, Asana project and section, Figma file key, generic webhook), `IntegrationEvent` outbox, `PinThread` and `PinComment`, Figma fields on campaigns. Additive `prisma db push`, no data lost.
+- Connectors in `lib/integrations/`: Slack Block Kit messages, Asana tasks with attachments, comments and completion, Figma link parsing, frame rendering and comment listing, signed webhooks. All over plain fetch, all unit tested against fakes.
+- Outbox with immediate delivery, retry with backoff from the cron endpoint, and a delivery log with Retry on the new Connections page.
+- Pinned notes on designs, Figma style: tap to pin, drag to mark an area, numbered pins, popover threads, list in the side panel, done state (ECD only), notes on earlier versions with crops, deep links, keyboard Escape steps, mobile bottom card. Crops with the marker drawn are generated on the server and travel to Slack, Asana and email.
+- Editor: Figma link field and "Pull frame from Figma" when the token is set.
+- Tests: 65 unit tests, 24 end to end tests including pins at 1280 and 390 and the Connections page.
+
+### Problems and fixes in this session
+
+- Prisma refuses to regenerate the client while the dev server holds the engine file on Windows. Stop the dev server before `prisma generate`.
+- Next forbids extra exports from route files; the env status helper moved to `lib/integrations/env.ts`.
+- Designs are very tall, so end to end drags near the middle of the image were outside the viewport. Tests now drag near the top.

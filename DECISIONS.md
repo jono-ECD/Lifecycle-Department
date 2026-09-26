@@ -63,3 +63,18 @@ Choices that HANDOFF.md did not make. One line of reasoning each.
 42. "Copy link" for an existing reviewer issues a signed 45 day link (`/e/<sig>`) with a QR code instead of rotating the personal token, so a link already saved on the phone keeps working.
 43. The admin workspace page shows the last 8 thread entries under the bank; the full list stays on the Activity page.
 44. SQLite files live in `prisma/` because Prisma resolves `file:./dev.db` relative to the schema, not the project root. The e2e server deletes `prisma/e2e.db` before each run so every run starts clean. `prisma db push --force-reset` was not used because Prisma refuses it from AI agent sessions without explicit consent.
+
+## Connections and pinned notes (second session, 2026-09-25)
+
+45. Slack is one channel per client workspace through an incoming webhook, as chosen. A "quiet" toggle keeps only change requests and notes; by default everything posts, one line per status change.
+46. Asana gets a task for every change request, plain note and pinned note from the client, with the words of the client first and verbatim, then campaign, email number, version, position, status and links. The crop of the marked area is attached. Replies become task comments and marking a note done completes the task. ECD's own actions never create tasks.
+47. Agency tokens (Asana, Figma) live in env, per client targets live in the database. One token, many clients.
+48. Every outbound delivery is a row in `IntegrationEvent` (an outbox). Delivery is attempted at once, failures retry with backoff from the cron endpoint, and the Connections page shows the log with a Retry button. Nothing is sent unless a target is saved, so the log stays empty for unconnected clients.
+49. A generic signed webhook per workspace (HMAC SHA-256 in `X-Bank-Signature`) covers Zapier, Make, n8n and anything not built yet.
+50. Pinned notes follow Figma's model: a comment mode, click to place a numbered pin, a composer right next to it, threads with replies, a list in the side panel, resolved notes hidden behind a toggle, numbers that never change. Two differences on purpose: drag to mark an area (clients think in areas), and "Done" instead of "Resolve" with only ECD allowed to mark it, as chosen.
+51. Pins are stored as fractions of the image and belong to one asset and version, so they stay put at any size and never float over a newer version. Notes from earlier versions are listed with their crop so they are not lost.
+52. A crop of the marked area with the marker drawn on it is generated on the server when a note is created. It travels to Slack, Asana and email so ECD can do the edit without opening the app. On localhost the Slack image block is skipped (Slack cannot fetch it) and the URL is still in the text.
+53. Deep links `?c=<campaign>&pin=<number>` open the drawer on the exact note. Emails, Slack buttons and Asana notes use them.
+54. On phones the note composer and thread are a fixed card at the bottom of the screen instead of a popover next to the pin, so they never end up clipped inside the scrolling preview.
+55. Figma groundwork: campaigns keep a Figma link, admins can pull the frame as a new version once `FIGMA_ACCESS_TOKEN` is set, and the client can list a file's frames and comments. Importing Figma comments as pins is possible later because the API gives node offsets.
+56. Pinned notes from the client email admins like other reviewer actions. Replies from ECD do not email the client (HANDOFF rule on comments) but show on the next open and in polling.

@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/AdminNav';
 import { CampaignEditor } from '@/components/CampaignEditor';
+import { todayYmd } from '@/lib/dates';
+import { envStatus } from '@/lib/integrations/env';
 import { assetUrl } from '@/lib/uploads';
 import { dateToYmd } from '@/lib/dates';
 
@@ -28,6 +30,8 @@ export default async function EditCampaignPage({ params, searchParams }: { param
       <CampaignEditor
         workspaceId={ws.id}
         base={`/admin/w/${ws.slug}`}
+        today={todayYmd(ws.timezone)}
+        figmaEnabled={envStatus().figmaToken}
         campaign={{
           id: c.id,
           name: c.name,
@@ -36,6 +40,7 @@ export default async function EditCampaignPage({ params, searchParams }: { param
           status: c.status,
           builtDate: dateToYmd(c.builtDate),
           scheduledDate: c.scheduledDate ? dateToYmd(c.scheduledDate) : '',
+          figmaUrl: c.figmaUrl ?? '',
           currentVersion: c.currentVersion,
           assets: c.assets.map((a) => ({ id: a.id, version: a.version, kind: a.kind, url: assetUrl(a.path)!, thumbUrl: assetUrl(a.thumbPath), name: a.originalName, size: a.size })),
         }}
