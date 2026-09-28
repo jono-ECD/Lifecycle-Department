@@ -55,12 +55,23 @@ Copy `.env.example` to `.env` (the scripts do this for you). Everything has a wo
 | `SEED_REVIEWER_TOKEN` | Fixed reviewer token for local development. Remove in production |
 | `ASANA_ACCESS_TOKEN` | Agency Asana personal access token. Per client projects are set in Connections |
 | `FIGMA_ACCESS_TOKEN` | Agency Figma personal access token, file read scope |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Optional. Service account key for writing the Campaign Bank tab through the Sheets API |
+
+## The one rule
+
+Each field has exactly one writer. The Bank owns client decisions. Asana owns that a campaign exists, its name, its planned date and its production stage. Figma owns the pixels. Klaviyo owns what actually sends. When two systems disagree, the owner wins. `COMPARISON.md` maps the architecture plan to this code, row by row.
 
 ## Roles
 
-**ECD admin.** Signs in with email and password at `/admin`. Can create workspaces, upload campaigns and new versions, edit metadata, change any status, schedule, mark as sent, comment, block days, invite reviewers, revoke and regenerate links, add other admins.
+**ECD admin.** Signs in with email and password at `/admin`. Can do everything: workspaces, team, connections, campaigns, versions, statuses, dates, reviewers, blocked days.
 
-**Client reviewer.** Never creates an account. Opens a personal link, sees one workspace, and can approve, request changes with a note, put on hold, bring back to review, schedule into an open slot, unschedule, and comment. Cannot upload, delete or edit metadata.
+**ECD editor.** Same sign in. Works on campaigns, reviewers and the calendar. Cannot manage the team, connections or workspaces, and cannot delete a campaign.
+
+**Client approver.** Never creates an account. Opens a personal link, sees one workspace, and can approve, request changes with a note, put on hold, bring back to review, request a send date, withdraw it, comment, and pin notes on the design. The client never schedules or sends.
+
+**Client commenter.** Sees everything the approver sees and can leave notes and pins, but decides nothing. Approval rights are per person, set in Reviewers and calendar.
+
+Clients see In review onward plus On hold. Drafts are hidden from clients unless the workspace setting allows them.
 
 ## How a reviewer link works
 
@@ -77,26 +88,50 @@ Copy `.env.example` to `.env` (the scripts do this for you). Everything has a wo
 
 ## Status model
 
-Six statuses, the same transitions and copy as the prototype. Reviewers see the prototype's buttons; admins get a few more.
+The six statuses of the prototype, plus two that keep the record honest.
 
-| From | Reviewer | Admin additionally |
+| Status | Entered when |
+|---|---|
+| Draft | ECD is still working. Hidden from the client by default. |
+| In review | ECD moves it, or Asana Stage reaches Client Review and a design exists. Approvers get an email. |
+| Changes requested | A client approver asks for changes. A note is required. |
+| Approved | A client approver approves. The approval stores the version, the person and the time. |
+| On hold | The client parks it. |
+| Date requested | The client picks a day for approved work. It holds the day. |
+| Scheduled | ECD confirms the date, or Asana Stage or Klaviyo say it is scheduled. |
+| Sent | ECD marks it, or Asana Stage or Klaviyo say it went out. |
+
+| From | Client approver | ECD |
 |---|---|---|
-| draft, review | Approve, Request changes (note required), Put on hold | Move to review (draft only), Edit, Delete |
-| approved | Schedule, Put on hold | Mark as sent |
-| hold | Back to review, Approve as is | Mark as sent |
-| scheduled | Unschedule | Move date, Mark as sent |
+| draft | (hidden) | Approve, Request changes, Put on hold, Move to review |
+| review | Approve, Request changes (note required), Put on hold | same |
+| changes | Approve as is, Put on hold | Move to review, Approve as is, Put on hold |
+| approved | Request a send date, Put on hold | Schedule, Put on hold, Mark as sent |
+| requested | Pick another date, Withdraw the date | Confirm the date, Schedule another day, Back to the bank, Mark as sent |
+| hold | Back to review, Approve as is | same, plus Mark as sent |
+| scheduled | nothing | Move date, Unschedule, Mark as sent |
 | sent | nothing | Reopen to hold |
 
-The bank filter is approved plus hold. Every status change is written to the campaign thread, so the thread is the full history.
+`lib/actions.ts` is the only way a status changes. It checks the role and the allowed move, writes the campaign and the thread entry together, then queues the side effects. The bank filter is approved plus hold.
+
+**An approval covers one design version.** When a new version arrives for a campaign that was approved, had a date requested, or had changes requested, the campaign goes back to In review, the approval is cleared, and the thread says why. The editor warns ECD before saving. An unchanged Figma render is recognised by its hash and creates no version.
 
 ## Scheduling
 
-A rolling window from today in the workspace timezone, 14 days by default. Blocked days (`/admin/w/<slug>/settings`) and full days are skipped. Past days are never offered. Today is offered only to admins. When a scheduled date passes and the campaign is still scheduled, admins see a flag on the card and in the drawer. Nothing is marked as sent automatically; ECD sends from Klaviyo and confirms here.
+A rolling window from today in the workspace timezone, 14 days by default. A day is taken by a scheduled campaign, a requested date, or an item planned in the content calendar. Blocked days and full days are skipped, past days are never offered, and today is offered only to ECD.
+
+- **Offer window.** A campaign can carry an offer start and end. The slot picker only offers days inside it, so an approved promo cannot be booked after its code expires. Evergreen work has no window.
+- **Send days.** By default every day is open unless blocked. A workspace can switch to listed send days, where the client can only ask for the days ECD opened, by weekday cadence or one by one.
+- **Late.** When a scheduled date passes and the campaign is still scheduled, ECD sees a flag on the card and in the drawer.
+
+## SMS
+
+A campaign has a channel, email or SMS. SMS has no frame, so the copy itself is the version: it shows as a text preview with its character and message count, and editing the copy creates the next version.
 
 ## Notifications
 
 - Admin moves campaigns to review: reviewers get one email per batch (10 minute window) with the count of everything in review, names, subtitles, thumbnails and a link. The flag lives on the campaign row, so a restart never double sends.
-- Reviewer approves, requests changes, holds, schedules or unschedules: admins get an email with the note.
+- Reviewer approves, requests changes, holds, requests a date or withdraws it: admins get an email with the note.
 - Reminders: campaigns in review for 3 days or more, one email per workspace per day at or after 9:00 workspace time. `GET /api/cron/reminders?secret=<CRON_SECRET>` runs it (also flushes pending digests). `RUN_SCHEDULER=1` does the same in process every 15 minutes.
 - Nothing is sent for comments alone.
 
@@ -108,18 +143,31 @@ Clients can point at exactly what should change, the way they do in Figma. In th
 
 When a note is created the server crops the marked area, draws the marker on it, and sends that crop with the note to the admin email, Slack and Asana. Deep links `?c=<campaign>&pin=<number>` open the drawer on that note.
 
-## Connections (Slack, Asana, Figma, webhooks)
+## Connections
 
 Each workspace has a Connections page in the admin. Agency tokens live in env, per client targets in the database.
 
 | Connection | Set where | What happens |
 |---|---|---|
-| Slack | Incoming webhook URL per workspace | Every change request and pinned note posts with the words of the client verbatim, campaign, email number, version, position, a crop of the area and an "Open in the bank" button. Status changes post as one line, or not at all with the quiet toggle. |
-| Asana | `ASANA_ACCESS_TOKEN` in env, project GID (and optional section and assignee) per workspace | Change requests, plain notes and pinned notes from the client become tasks: the words of the client first, then context and links, crop attached. Replies become task comments; marking a note done completes the task. |
-| Figma | `FIGMA_ACCESS_TOKEN` in env, file key per workspace, link per campaign | Campaign editor keeps a Figma link and can pull the frame as the next version. The client can list frames and comments for a later import. |
-| Webhook | URL and secret per workspace | Every event as JSON, signed with HMAC SHA-256 in `X-Bank-Signature`, for Zapier, Make or n8n. |
+| Asana, inbound | `ASANA_ACCESS_TOKEN` in env, project and section per workspace | Every five minutes the Bank reads the tasks of the campaign section changed since the last pull. Each email or SMS task becomes a campaign keyed on the task id, with its name, due date, Stage, and the `Design:` and `Klaviyo:` links from the task notes. Stage "Client Review" moves it to In review once a design exists; "Scheduled in Klaviyo" and "Done" move it to Scheduled and Sent. |
+| Asana, outbound | same | A client decision becomes a comment on that same task ("Name via Campaign Bank: ..."), with their words verbatim, and sets Stage. A note pinned on the design becomes a subtask with the crop attached. Without a linked task, a new task is created in the project. |
+| Stage binding | Connections, "Load the Stage fields" | Stage is bound by field id and option id, never by name. When two fields share a name the screen says so and lists both with their ids. The Bank remembers the Stage it wrote, so the next pull ignores its own write. |
+| Figma | `FIGMA_ACCESS_TOKEN` in env | Frames render at 2x and are copied into our storage. A changed file is noticed on the next sync and re-rendered; unchanged frames are skipped. |
+| Klaviyo | Private key per workspace, encrypted | Results per sent email. With the campaign id on the campaign, Scheduled and Sent follow Klaviyo. The Bank never writes to Klaviyo. |
+| Content calendar | Sheet link per workspace | Read only. Planned sends show on the calendar and take the day. Reads a list with a date column, or a calendar drawn as a month grid. |
+| Campaign Bank tab | Feed link, or sheet id plus `GOOGLE_SERVICE_ACCOUNT_JSON` | The Bank's own tab in the Scheduler sheet, one row per campaign keyed on the Asana task id. The calendar grid is never written. |
+| Slack | Incoming webhook URL per workspace | Change requests and pinned notes post with the words of the client verbatim, the crop and a button. |
+| Webhook | URL and secret per workspace | Every event as signed JSON, for Zapier, Make or n8n. |
 
-Every delivery is logged (`IntegrationEvent`), retried with backoff by the cron endpoint, and visible on the Connections page with a Retry button. Each connection has a test button. Nothing is sent for a workspace until a target is saved.
+**Sync problems.** A task the Bank cannot read is never guessed at. It is listed in Connections with the reason ("the Design: line has no link yet", "Stage is not mapped") and clears on its own once the task is fixed.
+
+**The outbox.** A client click never waits on another tool. The decision is saved first; every side effect is a row in `IntegrationEvent` with a unique key, retried with backoff, and parked as "gave up" after five attempts where ECD can see it and retry.
+
+**The Campaign Bank tab without credentials.** In Connections create the feed link, add a tab named Campaign Bank to the sheet, and paste `=IMPORTDATA("<feed link>")` in cell A1. Google refreshes it about once an hour. With a service account the Bank rewrites the tab after every change instead.
+
+## Revision insights
+
+The admin workspace page shows how reviews are going, from the thread: typical time to approve, rounds per campaign, how often work is put on hold, and what is waiting.
 
 ## Import from Figma
 

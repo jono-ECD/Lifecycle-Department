@@ -46,7 +46,8 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 | `SEED_REVIEWER_TOKEN` | never in production | Leave unset so the seed makes a random link |
 | `ASANA_ACCESS_TOKEN` | optional | Agency Asana token. Without it Asana connections show "Token missing" and nothing is sent |
 | `FIGMA_ACCESS_TOKEN` | optional | Agency Figma token. Without it Import from Figma explains how to add it and frames cannot be pulled |
-| `ENABLE_DEV_MOCKS`, `FIGMA_API_BASE`, `KLAVIYO_API_BASE` | never in production | Sample mode for local trials. Leave all three unset |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | optional | The whole service account key as one line. Share the Scheduler sheet with its email as an editor. Without it, use the feed link |
+| `ENABLE_DEV_MOCKS`, `FIGMA_API_BASE`, `KLAVIYO_API_BASE`, `ASANA_API_BASE` | never in production | Sample mode for local trials. Leave all unset |
 
 Klaviyo keys and spreadsheet links are per client and are entered in the admin under Connections, not in the environment. Klaviyo keys are encrypted with a key derived from `SESSION_SECRET`, so changing that secret means entering the client keys again.
 | `NEXT_TELEMETRY_DISABLED` | optional | `1` |
@@ -57,11 +58,11 @@ Klaviyo keys and spreadsheet links are per client and are entered in the admin u
 
 ## Setting the cron
 
-The endpoint is `GET` or `POST /api/cron/reminders`. Authenticate with `Authorization: Bearer <CRON_SECRET>` or `?secret=<CRON_SECRET>`. It sends reminders due today (at or after 9:00 workspace time, once per day per workspace), flushes review digests whose batch window has passed, and retries failed Slack, Asana and webhook deliveries. Safe to call as often as you like; nothing is sent twice.
+The endpoint is `GET` or `POST /api/cron/reminders`. Authenticate with `Authorization: Bearer <CRON_SECRET>` or `?secret=<CRON_SECRET>`. It pulls Asana (every five minutes at most), checks Figma files for changes, reads the content calendar, refreshes Klaviyo, sends reminders due today (at or after 9:00 workspace time, once per day per workspace), flushes review digests whose batch window has passed, and retries failed Slack, Asana and webhook deliveries. Safe to call as often as you like; nothing is sent twice.
 
 Slack image previews need `APP_URL` to be a public https address, since Slack fetches the crop from the app. On localhost the crop link is still in the message text.
 
-Run it hourly. Examples:
+Run it every five minutes, which is the Asana polling interval. Each job inside keeps its own pace, so nothing runs more often than it should. Examples:
 
 - Railway or Fly cron, GitHub Actions schedule, or any uptime pinger: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://bank.example.com/api/cron/reminders`
 - Vercel: add `{"crons": [{"path": "/api/cron/reminders", "schedule": "0 * * * *"}]}` to `vercel.json` and set `CRON_SECRET`; Vercel sends it as a bearer token. Vercel also needs path 2 (no disk).
@@ -74,3 +75,11 @@ Run it hourly. Examples:
 3. `SESSION_SECRET` and `CRON_SECRET` are random.
 4. The seeded reviewer link is revoked and the real one was created from the admin.
 5. `npm run check` was green on the commit being deployed.
+
+## Upgrading an existing database
+
+`npm run db:push` adds the new columns and tables and keeps the data. Then run `node scripts/backfill-approvals.mjs` once: campaigns approved before approvals were tied to a version get their record from the thread.
+
+## Using Supabase
+
+The architecture plan names Supabase. It fits without code changes: use the Supabase Postgres connection string as `DATABASE_URL` with `prisma/schema.postgres.prisma`, and Supabase Storage through its S3 compatible endpoint with `STORAGE_DRIVER=s3`. Tenant isolation is enforced by the application and covered by a second tenant test; row level security policies can be added on top later.

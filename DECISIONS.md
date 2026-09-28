@@ -97,3 +97,34 @@ Choices that HANDOFF.md did not make. One line of reasoning each.
 70. Results are visible to the client, as chosen. The link control for unmatched Klaviyo emails is ECD only.
 71. Sample mode (`ENABLE_DEV_MOCKS=1`) serves stand ins for Figma, Klaviyo and a calendar sheet from the app itself, so the features can be tried and tested end to end with no accounts. It is on in the local `.env` and in the e2e server, commented out in `.env.example`, and answers 404 when off.
 72. `prisma db push` without `--force-reset` was used for the new tables. It is additive and keeps existing data.
+
+## Aligning with the architecture plan (fourth session, 2026-09-28)
+
+73. The plan's rule "each field has exactly one writer" is adopted as the integration design. `COMPARISON.md` maps every row of its field ownership table to code.
+74. Two statuses were added to the prototype's six: "Changes requested" and "Date requested". A change request used to fall back to Draft, which would now hide the campaign from the client who commented on it. A client picking a date used to read "Scheduled" before anyone had scheduled anything.
+75. A client picking a date is a request. It holds the day so two requests cannot collide, and only ECD, Asana Stage or Klaviyo turn it into Scheduled. This replaces the earlier behaviour where the client scheduled directly. Clients can no longer unschedule, because Scheduled now means it is really in Klaviyo.
+76. An approval stores the version, the person and the time. A new version voids it for campaigns that were approved, had a date requested, or had changes requested, and sends them back to review. Scheduled and sent campaigns are left alone, because ECD already acted on them.
+77. The editor warns before a new version voids an approval, so ECD never does it by accident.
+78. Clients do not see drafts, the plan's default for D6. A per workspace switch turns it on. The prototype showed drafts; the plan's reasoning (unfinished work should not reach the client) wins.
+79. Approver or commenter is per reviewer, the plan's D4. Commenters can still leave notes and pin notes on the design.
+80. ECD has two roles, admin and editor, from the plan's data model. Editors cannot manage team, connections or workspaces, and cannot delete campaigns.
+81. Asana is the source of campaigns when a project is connected. Campaigns are keyed on the task id. Campaigns can still be created by hand or from the Figma picker, for clients whose work is not in Asana.
+82. When a campaign has its Asana task, feedback is a comment on that task and Stage moves with the decision, as the plan says. Notes pinned on the design become subtasks of that task, which keeps the earlier choice of one to do per note. Without a linked task, a new task is created as before.
+83. Stage is bound by field id and option id. The Connections screen loads the project's dropdown fields, warns when two share a name (the plan's hygiene flag), guesses the mapping from option names, and stores ids once ECD confirms.
+84. The Bank remembers the Stage value it wrote on the campaign. A pull that sees that same value treats it as its own echo and changes nothing.
+85. An unknown or unmapped Stage option never changes a status. It is listed as a sync problem instead of being guessed.
+86. Tasks the Bank cannot read are listed in Connections with the reason, one row per distinct problem, and clear on their own after the next pull that reads the task cleanly.
+87. SMS copy comes from a "Copy:" line in the task notes and runs until the next template label. Only known template labels end it, because SMS copy itself often contains a colon.
+88. Polling, not webhooks, as the plan argues: a missed run is caught by the next, and no public endpoint is needed. Asana every five minutes; the cursor only moves after a full successful pass.
+89. Figma changes are noticed by asking each file for its last modified time, one cheap call per file, and re-rendering only when it changed. A content hash then skips frames that did not change.
+90. The Campaign Bank tab is offered two ways. The feed link needs no Google account and refreshes about hourly through IMPORTDATA. The Sheets API path rewrites the tab after every change and needs a service account. Both write the same rows.
+91. The calendar grid is never written, the plan's D2. It is only read, to show planned days.
+92. The content calendar reader now also reads a calendar drawn as a month grid, because the plan says the Scheduler sheet is one. Day numbers of the month before and after are dated correctly. The real sheet has not been seen, so this is a best reading of the description.
+93. Klaviyo moves a status only when the link is sure: the campaign id from the Asana task, or a link made by hand. A match by name attaches results but never moves a status.
+94. The outbox has a unique key per job, checked in code rather than by a database constraint. Adding the constraint made `prisma db push` ask to accept data loss, which would have blocked `npm run seed` for everyone.
+95. Jobs that fail five times are parked as "gave up" and stay visible with a Retry button.
+96. Offer windows are optional fields on the campaign. The slot picker and the server both enforce them.
+97. Listed send days are a per workspace setting, off by default. The plan has ECD supply the slots; the prototype treats every day as open. Both are available.
+98. Revision analytics were built now although the plan lists them as backlog, because the thread already held everything needed.
+99. The stack stays Next.js and Prisma instead of Supabase with Vite. The behaviour the plan asks for is present and tested, and rebuilding on another stack would cost the tests and the time already spent. Supabase can still be the database and the storage. The one thing not matched is row level security; isolation is enforced in the application and proven with a second tenant test.
+100. Existing data was kept. The schema change was additive, and `scripts/backfill-approvals.mjs` gave earlier approvals their record from the thread instead of reseeding.

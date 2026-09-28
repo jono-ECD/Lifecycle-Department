@@ -29,8 +29,8 @@ const ACTION_LINE: Record<string, string> = {
   approve: 'approved',
   request_changes: 'requested changes on',
   hold: 'put on hold',
-  schedule: 'scheduled',
-  unschedule: 'unscheduled',
+  request_date: 'requested a send date for',
+  withdraw_date: 'withdrew the send date of',
   back_to_review: 'moved back to review',
 };
 

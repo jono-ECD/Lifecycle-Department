@@ -110,3 +110,37 @@ Admin: http://localhost:3000/admin with `mauricio@ecdigitalstrategy.com` and `ca
 - The dev server had stopped between sessions. Restarted it.
 - Long shell commands still fail to parse here, so edits were scripted from files.
 - Test selectors matched the green status pill (`.ok`) and the campaign names inside the link dropdown. Selectors now target the message and the row title.
+
+## Fourth session, 2026-09-28: aligning with the architecture plan
+
+Mauricio's boss shared "Campaign Bank Architecture", an MVP plan marked "Not built". It was compared with this repository and the gaps were closed. `COMPARISON.md` is the full comparison, written so it can be shown to him.
+
+- Already built and matching the plan: the core bank, versions, Figma render into our own storage, the retrying outbox, Resend, multi client.
+- Added from the plan: approval tied to a design version and voided by a new one; "Changes requested" and "Date requested" statuses; a client date pick is a request; Asana as the source of campaigns with Stage bound by id and echo suppression; feedback as a comment on the campaign's own task; sync problems listed in the app; approver and commenter per person; admin and editor for ECD; drafts hidden from clients; offer windows; SMS campaigns as text; listed send days; the Campaign Bank tab as a feed and through the Sheets API; month grid reading; Figma change detection with a content hash; Klaviyo as the source for scheduled and sent; a second tenant isolation test.
+- Built from the plan's backlog: revision analytics.
+- Tests: 116 unit tests, 41 end to end tests.
+
+### Behaviour that changed, so nobody is surprised
+
+1. A client picking a date now shows "Date requested", not "Scheduled". ECD confirms it with "Confirm the date".
+2. Clients can no longer unschedule. They can withdraw a requested date, or leave a note on a scheduled campaign.
+3. "Request changes" now shows "Changes requested" instead of sending the campaign to Draft.
+4. Clients no longer see drafts. Switch it on per workspace in Reviewers and calendar, Settings.
+5. Uploading a new version over approved work sends it back to review. The editor warns first.
+6. With Asana connected and a campaign linked to its task, feedback is a comment on that task and notes are its subtasks, instead of new top level tasks.
+
+### What to look at first, fourth session
+
+1. `COMPARISON.md`, to show your boss.
+2. Admin, Connections, Asana: type project `700001`, Save, "Load the Stage fields", Save, "Pull from Asana now". Sample mode answers with four tasks. Open the bank: "Holiday Gift Guide" arrived in review with its Figma frame.
+3. As the client, approve it. Back in Connections, the deliveries list shows the comment and Stage written to the task.
+4. As the client, request a send date on approved work, then confirm it as ECD.
+5. As ECD, upload a new version over an approved campaign and watch it return to review.
+
+### Problems and fixes in this session
+
+- Adding unique constraints made `prisma db push` ask to accept data loss, although the columns were new and empty. Replaced them with indexes and a check in code.
+- The validation library treats a record keyed by an enum as "all keys required", so saving an empty Stage mapping failed. Used a partial record.
+- A scripted edit silently failed to match because of escaping, and one full test run was wasted. Precise edits now go through the editor.
+- The Connections screen imported Stage constants from a server file that reads the disk. Moved them to `lib/integrations/asanaStage.ts`.
+- SMS copy containing "Shop now: ..." was cut at the colon. Only known template labels end the copy now.
