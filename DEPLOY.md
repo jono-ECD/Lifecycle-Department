@@ -45,7 +45,10 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 | `REVIEW_BATCH_MS` | optional | Default 600000 |
 | `SEED_REVIEWER_TOKEN` | never in production | Leave unset so the seed makes a random link |
 | `ASANA_ACCESS_TOKEN` | optional | Agency Asana token. Without it Asana connections show "Token missing" and nothing is sent |
-| `FIGMA_ACCESS_TOKEN` | optional | Agency Figma token. Without it the Figma link is kept but frames cannot be pulled |
+| `FIGMA_ACCESS_TOKEN` | optional | Agency Figma token. Without it Import from Figma explains how to add it and frames cannot be pulled |
+| `ENABLE_DEV_MOCKS`, `FIGMA_API_BASE`, `KLAVIYO_API_BASE` | never in production | Sample mode for local trials. Leave all three unset |
+
+Klaviyo keys and spreadsheet links are per client and are entered in the admin under Connections, not in the environment. Klaviyo keys are encrypted with a key derived from `SESSION_SECRET`, so changing that secret means entering the client keys again.
 | `NEXT_TELEMETRY_DISABLED` | optional | `1` |
 
 ## Running the seed

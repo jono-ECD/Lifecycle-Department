@@ -79,3 +79,21 @@ Choices that HANDOFF.md did not make. One line of reasoning each.
 55. Figma groundwork: campaigns keep a Figma link, admins can pull the frame as a new version once `FIGMA_ACCESS_TOKEN` is set, and the client can list a file's frames and comments. Importing Figma comments as pins is possible later because the API gives node offsets.
 56. Pinned notes from the client email admins like other reviewer actions. Replies from ECD do not email the client (HANDOFF rule on comments) but show on the next open and in polling.
 57. The drawer shows an email at its real width (100%) by default, with zoom from 50% to 200% and a Fit toggle, like Figma. The drawer grew to 1140px so a 600 to 640px email fits next to the side panel. Exports wider than 900px are treated as 2x and halved, so a 1200px Figma export still reads as a 600px email. Pins are fractions, so zoom never moves them.
+
+## Figma import, content calendar, Klaviyo (third session, 2026-09-28)
+
+58. Figma import is a picker, as chosen: paste a file link, tick frames, import. Frames named with EM1, EM2 are combined into one campaign by default, because that is how ECD already names multi email campaigns. The tick order is the email order.
+59. Imported campaigns store the file key and frame ids, so "Pull the latest from Figma" makes the next version without re-picking. Frames render at 2x; the drawer halves anything wider than 900px, so a 600px frame shows as a 600px email.
+60. The scheduler is a spreadsheet, as chosen. It is read through the sheet's CSV export with link sharing, so no Google account or API key is involved. Any CSV URL works, which covers Excel.
+61. The reader finds the header row and the date and name columns on its own and accepts the date formats people type, with US month first order for slashes. When the sheet gives no year it picks the year closest to today. ECD can name the columns when the guess is wrong.
+62. One shared agency sheet is supported through a filter column and value per client, since a sheet per client is unlikely.
+63. Planned days count as taken, as chosen. A planned line and a bank campaign with the same name count as one send, and that campaign may take its own planned day. Names match when equal after removing punctuation, or when one contains the other and the shorter is at least 8 characters.
+64. The sheet is read every 15 minutes by the cron endpoint or the in process scheduler, plus "Sync now". Each read replaces the stored items, so deleting a row in the sheet removes it from the calendar.
+65. Klaviyo keys are per client, entered in Connections, encrypted with AES-256-GCM using a key derived from `SESSION_SECRET`, and never returned to the browser. Only a hint like `pk_••••6789` is shown.
+66. Klaviyo results refresh every three hours. The reporting endpoint allows 2 calls a minute and 225 a day, and one call returns the last 12 months for every campaign.
+67. Revenue is attributed to the Placed Order metric, preferring the store integration (Shopify and similar). When an account has no such metric, revenue is left empty instead of showing a wrong number.
+68. Open and click rates are computed from unique opens and clicks over delivered, and the 90 day summary weights rates by recipients so a small send cannot skew it.
+69. Sent history is the union of campaigns marked sent in the bank and campaigns Klaviyo reports as sent. A Klaviyo send never marks a bank campaign as sent on its own; ECD still confirms, as HANDOFF requires.
+70. Results are visible to the client, as chosen. The link control for unmatched Klaviyo emails is ECD only.
+71. Sample mode (`ENABLE_DEV_MOCKS=1`) serves stand ins for Figma, Klaviyo and a calendar sheet from the app itself, so the features can be tried and tested end to end with no accounts. It is on in the local `.env` and in the e2e server, commented out in `.env.example`, and answers 404 when off.
+72. `prisma db push` without `--force-reset` was used for the new tables. It is additive and keeps existing data.

@@ -18,6 +18,12 @@ export const E2E_ENV = {
   CHECKPOINT_DISABLE: '1',
   PLAYWRIGHT_BROWSERS_PATH: '0',
   NEXT_DIST_DIR: '.next-e2e',
+  // sample mode: stand ins for Figma, Klaviyo and the content calendar sheet
+  ENABLE_DEV_MOCKS: '1',
+  FIGMA_ACCESS_TOKEN: 'sample',
+  FIGMA_API_BASE: 'http://localhost:3100/api/dev/mock/figma',
+  KLAVIYO_API_BASE: 'http://localhost:3100/api/dev/mock/klaviyo',
+  ASANA_ACCESS_TOKEN: '',
 };
 
 const env = { ...process.env, ...E2E_ENV };

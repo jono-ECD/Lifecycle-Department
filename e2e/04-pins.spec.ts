@@ -114,7 +114,7 @@ test('connections page saves settings, validates them, and logs deliveries once 
   await adminLogin(page);
   await page.goto('/admin/w/blessed-botanicals/integrations');
   await hydrated(page);
-  await expect(page.locator('.conn .status')).toHaveText(['Not connected', 'Not connected', 'Not connected', 'Not connected']);
+  await expect(page.locator('.conn .panel > .inline > .status')).toHaveText(['Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected']);
   await page.fill('input[placeholder^="https://hooks.slack.com"]', 'https://example.com/not-slack');
   await page.click('[data-testid=save-integrations]');
   await expect(page.locator('.err')).toContainText('Paste the incoming webhook URL from Slack');
@@ -123,7 +123,7 @@ test('connections page saves settings, validates them, and logs deliveries once 
   await page.fill('input[placeholder="random string"]', 'e2e-webhook-secret');
   await page.click('[data-testid=save-integrations]');
   await expect(page.locator('.conn > .ok')).toHaveText('Saved.');
-  await expect(page.locator('.conn .status').nth(3)).toHaveText('Connected');
+  await expect(page.locator('[data-conn=webhook] .status')).toHaveText('Connected');
   await shot(page, 'admin-connections-1280.png', true);
 
   // an action now produces a delivery row; the target answers 401, so it shows as failed with the reason

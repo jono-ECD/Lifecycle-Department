@@ -87,3 +87,26 @@ Admin: http://localhost:3000/admin with `mauricio@ecdigitalstrategy.com` and `ca
 - Next forbids extra exports from route files; the env status helper moved to `lib/integrations/env.ts`.
 - Designs are very tall, so end to end drags near the middle of the image were outside the viewport. Tests now drag near the top.
 - 2026-09-25: Email previews were shrunk to 400px and looked wrong to clients. The drawer now shows designs at their real width with zoom controls (minus, plus, Fit, percentage) and a wider preview column. Verified at 1280 and 390 with screenshots.
+
+## Third session, 2026-09-28: Figma import, content calendar, Klaviyo results
+
+- Asked four questions first. Answers: the scheduler is a spreadsheet; planned days count as taken; results are visible to ECD and the client; Figma designs arrive by picking frames.
+- Confirmed Klaviyo's current API against its docs (revision 2026-07-15): campaigns list, metrics list, campaign values report, and the reporting rate limits.
+- Import from Figma screen: file link, frame thumbnails by page, tick to pick, EM1 and EM2 combined, names and types, import as drafts or to review. "Pull the latest from Figma" in the editor.
+- Content calendar: spreadsheet link per client, read every 15 minutes, header and column detection, flexible dates, client filter for shared sheets, planned days on the calendar strip and excluded from the slot picker.
+- Klaviyo: per client encrypted key, sync every three hours, Sent history page for ECD and the client with a 90 day summary, results in the drawer of sent campaigns, manual linking for unmatched emails.
+- Sample mode with stand in services so all three can be tried today without accounts. It is switched on in the local `.env`.
+- Tests: 87 unit tests, 29 end to end tests.
+
+### What to look at first, third session
+
+1. Admin, Import from Figma: paste any Figma link, Show frames, tick "October Promo, EM1", "October Promo, EM2" and "Sea Moss Spotlight", Import. Open "October Promo" in the bank: two emails at real width.
+2. Admin, Connections, Content calendar: click "Use the sample calendar", Save connections, Sync now. Open the bank: outlined chips on three days, and those days are disabled in the slot picker.
+3. Admin, Connections, Klaviyo: type `pk_sample0123456789` as the key, Save, Sync now. Then Sent history, and open the sent campaign "Last Chance: Buy Any 2, Save 15%" to see its results. Open the reviewer link and click "Sent history" to see what the client sees.
+4. To go live: remove the four sample lines from `.env`, add the real `FIGMA_ACCESS_TOKEN`, paste each client's real sheet link and Klaviyo key in Connections.
+
+### Problems and fixes in this session
+
+- The dev server had stopped between sessions. Restarted it.
+- Long shell commands still fail to parse here, so edits were scripted from files.
+- Test selectors matched the green status pill (`.ok`) and the campaign names inside the link dropdown. Selectors now target the message and the row title.

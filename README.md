@@ -121,6 +121,37 @@ Each workspace has a Connections page in the admin. Agency tokens live in env, p
 
 Every delivery is logged (`IntegrationEvent`), retried with backoff by the cron endpoint, and visible on the Connections page with a Retry button. Each connection has a test button. Nothing is sent for a workspace until a target is saved.
 
+## Import from Figma
+
+Admin, Import from Figma. Paste a Figma file link, press Show frames, and every top level frame on every page appears as a thumbnail. Tick the ones that are ready; the order you tick is the order in the campaign. Frames named with EM1, EM2 and so on are combined into one campaign (switch that off to keep them separate). Name each campaign, pick its type, and import as drafts or straight to review. Frames are rendered at 2x and stored as version 1. Frames already in the bank are marked.
+
+Each imported campaign remembers its file and frames, so "Pull the latest from Figma" in the editor creates the next version in one click. Needs `FIGMA_ACCESS_TOKEN` in the environment; one token covers every file that account can open.
+
+## Content calendar from a spreadsheet
+
+Connections, Content calendar. Paste the link to the Google Sheet where sends are planned and set its sharing to "Anyone with the link can view". No API key is needed. The bank reads the sheet every 15 minutes (and on "Sync now"), finds the header row, the date column and the campaign name column on its own, and accepts dates the way people type them: `10/3/2026`, `10/3`, `Oct 3`, `Tue, Oct 6`, `2026-10-03`. If one sheet holds every client, name the client column and the value to keep. Rows marked cancelled are skipped. Excel works through any link that returns CSV.
+
+Planned sends show on the calendar strip as outlined chips, next to the filled chips for campaigns scheduled in the bank. A planned day counts as taken, so neither the client nor ECD can book another send there. When a campaign in the bank has the same name as a planned line, they count as one send, and that campaign can take its own day.
+
+## Klaviyo results and sent history
+
+Connections, Klaviyo. Paste the private API key of the client's Klaviyo account (read access to campaigns, metrics and reporting). Keys are per client, stored encrypted, and never shown again. The bank pulls every email campaign with recipients, opens, clicks, unsubscribes and revenue attributed to Placed Order, and refreshes every three hours; Klaviyo limits reporting calls, so it cannot be constant.
+
+Sent history (a link on the bank page for the client, and in the admin nav) lists every email marked sent in the bank plus everything Klaviyo reports as sent, with a summary of the last 90 days. Klaviyo campaigns are matched to bank campaigns by name; ECD can link the rest by hand in the history, and manual links survive syncs. The drawer of a sent campaign shows its results. Both ECD and the client see results.
+
+## Sample mode
+
+To try these three features without any account, set in `.env`:
+
+```
+ENABLE_DEV_MOCKS="1"
+FIGMA_ACCESS_TOKEN="sample"
+FIGMA_API_BASE="http://localhost:3000/api/dev/mock/figma"
+KLAVIYO_API_BASE="http://localhost:3000/api/dev/mock/klaviyo"
+```
+
+Import from Figma then shows four stand in frames for any link. In Connections, "Use the sample calendar" fills in a sample sheet, and any key that starts with `pk_` connects the stand in Klaviyo. Remove the four lines before going live. The stand in endpoints answer 404 unless `ENABLE_DEV_MOCKS` is `1`.
+
 ## Sending
 
 Marking as sent is manual. The extension point is `lib/sendProvider.ts`: `getSendProvider()` returns the provider used when a campaign is marked as sent. The default `manual` provider does nothing. A Klaviyo provider would implement the same interface and be selected by `SEND_PROVIDER=klaviyo`.
