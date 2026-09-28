@@ -7,6 +7,8 @@ import { windowDates } from '@/lib/slots';
 import type { Actor } from '@/lib/auth';
 import type { CampaignType, Role, Status } from '@/lib/status';
 import { describePosition } from '@/lib/integrations/describe';
+import { unmatched, type Planned } from '@/lib/schedule';
+import { SENT_STATUSES } from '@/lib/integrations/klaviyo';
 
 export interface BankAsset {
   id: string;
@@ -71,9 +73,23 @@ export interface BankCampaign {
   late: boolean;
   figmaUrl: string | null;
   openNotes: number;
+  results: BankResults | null;
   assets: BankAsset[];
   pins: BankPin[];
   thread: BankComment[];
+}
+
+export interface BankResults {
+  sentOn: string | null;
+  subject: string | null;
+  recipients: number | null;
+  openRate: number | null;
+  clickRate: number | null;
+  opens: number | null;
+  clicks: number | null;
+  unsubscribes: number | null;
+  revenue: number | null;
+  conversions: number | null;
 }
 
 export interface BankDay {
@@ -82,6 +98,8 @@ export interface BankDay {
   wd: string;
   today: boolean;
   scheduled: { id: string; name: string }[];
+  /** Items from the content calendar that are not one of the scheduled campaigns. They take the day. */
+  planned: Planned[];
   blocked: string | null;
 }
 
@@ -110,6 +128,15 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
     }),
     db.calendarBlock.findMany({ where: { workspaceId: workspace.id } }),
   ]);
+  const [plannedRows, klaviyoRows] = await Promise.all([
+    db.scheduleItem.findMany({ where: { workspaceId: workspace.id }, orderBy: { date: 'asc' } }),
+    db.klaviyoCampaign.findMany({ where: { workspaceId: workspace.id, campaignId: { not: null }, status: { in: SENT_STATUSES } }, orderBy: { sendTime: 'desc' } }),
+  ]);
+  const resultsFor = new Map<string, BankResults>();
+  for (const k of klaviyoRows) {
+    if (!k.campaignId || resultsFor.has(k.campaignId)) continue;
+    resultsFor.set(k.campaignId, { sentOn: k.sendTime ? fmtStamp(k.sendTime, tz) : null, subject: k.subject, recipients: k.recipients, openRate: k.openRate, clickRate: k.clickRate, opens: k.opens, clicks: k.clicks, unsubscribes: k.unsubscribes, revenue: k.revenue, conversions: k.conversions });
+  }
 
   const isMine = (kind: string, id: string | null) => kind === actor.role && id === actor.id;
   const whoFor = (kind: string, name: string, id: string | null) => (isMine(kind, id) ? 'You' : kind === 'admin' ? (actor.role === 'admin' ? name : 'ECD') : kind === 'system' ? 'ECD' : name);
@@ -160,6 +187,7 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
       late: c.status === 'scheduled' && !!scheduled && scheduled < today,
       figmaUrl: actor.role === 'admin' ? c.figmaUrl : null,
       openNotes: pins.filter((p) => p.status === 'open' && p.version === c.currentVersion).length,
+      results: resultsFor.get(c.id) ?? null,
       assets: current.map((a) => ({
         id: a.id,
         kind: a.kind as 'image' | 'pdf',
@@ -184,14 +212,19 @@ export async function loadBank(workspace: Workspace, actor: Actor): Promise<Bank
   });
 
   const blockedBy = new Map(blocks.map((b) => [dateToYmd(b.date), b.label]));
-  const days: BankDay[] = windowDates(today, workspace.windowDays).map((ymd) => ({
-    ymd,
-    day: dayOfMonth(ymd),
-    wd: weekday2(ymd),
-    today: ymd === today,
-    scheduled: items.filter((i) => i.status === 'scheduled' && i.scheduled === ymd).map((i) => ({ id: i.id, name: i.name })),
-    blocked: blockedBy.get(ymd) ?? null,
-  }));
+  const days: BankDay[] = windowDates(today, workspace.windowDays).map((ymd) => {
+    const scheduled = items.filter((i) => i.status === 'scheduled' && i.scheduled === ymd).map((i) => ({ id: i.id, name: i.name }));
+    const planned = plannedRows.filter((p) => dateToYmd(p.date) === ymd).map((p) => ({ label: p.label, note: p.note }));
+    return {
+      ymd,
+      day: dayOfMonth(ymd),
+      wd: weekday2(ymd),
+      today: ymd === today,
+      scheduled,
+      planned: unmatched(planned, scheduled.map((s) => s.name)),
+      blocked: blockedBy.get(ymd) ?? null,
+    };
+  });
 
   return {
     workspace: {

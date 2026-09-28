@@ -26,23 +26,88 @@ model Workspace {
   blocks      CalendarBlock[]
   integration WorkspaceIntegration?
   events      IntegrationEvent[]
+  schedule    ScheduleItem[]
+  klaviyo     KlaviyoCampaign[]
 }
 
 // Per client connections. Agency level tokens (Asana, Figma) live in env; these are the per workspace targets.
 model WorkspaceIntegration {
-  id                 String   @id @default(cuid())
-  workspaceId        String   @unique
+  id                 String  @id @default(cuid())
+  workspaceId        String  @unique
   slackWebhookUrl    String?
-  slackQuietUpdates  Boolean  @default(false)
+  slackQuietUpdates  Boolean @default(false)
   asanaProjectGid    String?
   asanaSectionGid    String?
   asanaAssigneeEmail String?
   figmaFileKey       String?
   webhookUrl         String?
   webhookSecret      String?
-  updatedAt          DateTime @updatedAt
+
+  // Content calendar spreadsheet. A Google Sheets link or any CSV URL, read on a schedule.
+  sheetUrl          String?
+  sheetDateColumn   String?
+  sheetNameColumn   String?
+  sheetFilterColumn String?
+  sheetFilterValue  String?
+  sheetSyncedAt     DateTime?
+  sheetError        String?
+  sheetCount        Int       @default(0)
+
+  // Klaviyo is per client account, so the private key is per workspace. Stored encrypted.
+  klaviyoKeyEnc   String?
+  klaviyoKeyHint  String?
+  klaviyoMetricId String?
+  klaviyoSyncedAt DateTime?
+  klaviyoError    String?
+
+  updatedAt DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// Items read from the content calendar spreadsheet. They show on the send window and take the day.
+model ScheduleItem {
+  id          String   @id @default(cuid())
+  workspaceId String
+  date        DateTime
+  label       String
+  note        String?
+  source      String   @default("sheet")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, date])
+}
+
+// Sent emails and their results, synced from Klaviyo. Linked to a bank campaign when one matches.
+model KlaviyoCampaign {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  klaviyoId    String
+  campaignId   String?
+  name         String
+  subject      String?
+  status       String
+  sendTime     DateTime?
+  recipients   Int?
+  delivered    Int?
+  opens        Int?
+  openRate     Float?
+  clicks       Int?
+  clickRate    Float?
+  unsubscribes Int?
+  bounceRate   Float?
+  conversions  Int?
+  revenue      Float?
+  linkedBy     String?
+  syncedAt     DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, klaviyoId])
+  @@index([workspaceId, sendTime])
+  @@index([campaignId])
 }
 
 // Outbox for everything sent to Slack, Asana and webhooks. Retried by the cron endpoint, visible to admins.
@@ -92,6 +157,8 @@ model Campaign {
   reviewNotifiedAt DateTime?
   figmaUrl         String?
   figmaNodeId      String?
+  figmaFileKey     String?
+  figmaNodeIds     String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

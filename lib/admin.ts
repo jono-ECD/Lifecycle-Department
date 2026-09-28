@@ -12,6 +12,7 @@ import type { Actor } from '@/lib/auth';
 import { emit } from '@/lib/integrations/dispatch';
 import { payloadFor } from '@/lib/integrations/payload';
 import { parseFigmaUrl } from '@/lib/integrations/figma';
+import { dayCounts } from '@/lib/schedule';
 
 export const CampaignFields = z.object({
   name: z.string().trim().min(1, 'Give the campaign a name.').max(200),
@@ -86,15 +87,7 @@ export async function applyAdminStatus(campaignId: string, actor: Actor, status:
   if (status === 'scheduled') {
     if (!scheduledDate) throw new ApiError(400, 'Pick a send date for a scheduled campaign.');
     const ws = c.workspace;
-    const [others, blocks] = await Promise.all([
-      db.campaign.findMany({ where: { workspaceId: ws.id, status: 'scheduled', id: { not: c.id }, scheduledDate: { not: null } }, select: { scheduledDate: true } }),
-      db.calendarBlock.findMany({ where: { workspaceId: ws.id }, select: { date: true } }),
-    ]);
-    const counts: Record<string, number> = {};
-    for (const o of others) {
-      const k = dateToYmd(o.scheduledDate!);
-      counts[k] = (counts[k] ?? 0) + 1;
-    }
+    const [counts, blocks] = await Promise.all([dayCounts(ws.id, c.id), db.calendarBlock.findMany({ where: { workspaceId: ws.id }, select: { date: true } })]);
     const check = checkSlot({ today: todayYmd(ws.timezone), windowDays: ws.windowDays, maxPerDay: ws.maxPerDay, counts, blocked: blocks.map((b) => dateToYmd(b.date)), role: 'admin' }, scheduledDate);
     if (!check.ok) throw new ApiError(400, check.reason);
     data.scheduledDate = ymdToDate(scheduledDate);

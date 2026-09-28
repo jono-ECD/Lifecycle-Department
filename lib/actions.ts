@@ -8,6 +8,7 @@ import { dateToYmd, isYmd, todayYmd, ymdToDate } from '@/lib/dates';
 import { isStatus } from '@/lib/status';
 import { notifyStatusChange } from '@/lib/notify';
 import { getSendProvider } from '@/lib/sendProvider';
+import { dayCounts } from '@/lib/schedule';
 import { emit } from '@/lib/integrations/dispatch';
 import { payloadFor } from '@/lib/integrations/payload';
 import type { IntegrationEventType } from '@/lib/integrations/types';
@@ -34,15 +35,7 @@ export async function performAction(campaignId: string, actor: Actor, input: Act
     date = input.date;
     const ws = campaign.workspace;
     const today = todayYmd(ws.timezone);
-    const [others, blocks] = await Promise.all([
-      db.campaign.findMany({ where: { workspaceId: ws.id, status: 'scheduled', id: { not: campaign.id }, scheduledDate: { not: null } }, select: { scheduledDate: true } }),
-      db.calendarBlock.findMany({ where: { workspaceId: ws.id }, select: { date: true } }),
-    ]);
-    const counts: Record<string, number> = {};
-    for (const o of others) {
-      const k = dateToYmd(o.scheduledDate!);
-      counts[k] = (counts[k] ?? 0) + 1;
-    }
+    const [counts, blocks] = await Promise.all([dayCounts(ws.id, campaign.id), db.calendarBlock.findMany({ where: { workspaceId: ws.id }, select: { date: true } })]);
     const check = checkSlot({ today, windowDays: ws.windowDays, maxPerDay: ws.maxPerDay, counts, blocked: blocks.map((b) => dateToYmd(b.date)), role: actor.role }, date);
     if (!check.ok) throw new ApiError(400, check.reason);
   }
