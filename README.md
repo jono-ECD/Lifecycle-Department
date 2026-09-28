@@ -24,7 +24,7 @@ department/     What we sell, how we operate, the quality bar
 skills/         Reusable procedures — CATALOG.md is the index
 workflows/      Ordered sequences with quality gates
 accounts/       Per-account context, platform refs, and deliverables
-integrations/   Klaviyo Composer and MCP — verified capabilities only
+integrations/   Klaviyo Composer, MCP, Campaign Bank spec — verified capabilities only
 templates/      Reusable output formats
 governance/     Authoring, review, isolation, changelog
 scripts/        sync.py — regenerates derived docs from their sources

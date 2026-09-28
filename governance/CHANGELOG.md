@@ -2,6 +2,16 @@
 
 Significant changes to the shared library. Account-level work is not recorded here.
 
+## 2026-09-28
+
+### Campaign Bank MVP architecture (not built)
+
+Added `integrations/campaign-bank/README.md`: the build outline for a
+multi-tenant client approval app (Figma import, Asana routing, calendar sheet
+projection). Blessed Botanicals tenant config is in
+`accounts/blessed-botanicals/platform/campaign-bank.md`. No integration calls
+have been exercised.
+
 ## 2026-09-20
 
 ### Restructured to the department repository guide
