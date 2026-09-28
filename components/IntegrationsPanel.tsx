@@ -1,6 +1,7 @@
 'use client';
 
-// Per workspace connections: Slack channel, Asana project, Figma file, generic webhook. Plus the delivery log.
+// Per workspace connections: Slack, Asana, Figma, Klaviyo, the content calendar sheet and a generic webhook.
+// Plus the delivery log.
 import { useState } from 'react';
 import { api } from '@/lib/client';
 
@@ -13,6 +14,22 @@ export interface IntegrationConfig {
   figmaFileKey: string;
   webhookUrl: string;
   webhookSecret: string;
+  sheetUrl: string;
+  sheetDateColumn: string;
+  sheetNameColumn: string;
+  sheetFilterColumn: string;
+  sheetFilterValue: string;
+  klaviyoKey: string;
+}
+
+export interface SyncStatus {
+  sheetSyncedOn: string | null;
+  sheetError: string | null;
+  sheetCount: number;
+  klaviyoConnected: boolean;
+  klaviyoHint: string | null;
+  klaviyoSyncedOn: string | null;
+  klaviyoError: string | null;
 }
 
 export interface EventRow {
@@ -28,26 +45,37 @@ export interface EventRow {
 }
 
 type Target = 'slack' | 'asana' | 'figma' | 'webhook';
+type SyncTarget = 'sheet' | 'klaviyo';
+type Note = { kind: 'ok' | 'err'; text: string };
 
-export function IntegrationsPanel({ workspaceId, initial, env, events: initialEvents }: { workspaceId: string; initial: IntegrationConfig; env: { asanaToken: boolean; figmaToken: boolean; resend: boolean }; events: EventRow[] }) {
+export function IntegrationsPanel({ workspaceId, initial, env, status: initialStatus, events: initialEvents, sample }: { workspaceId: string; initial: IntegrationConfig; env: { asanaToken: boolean; figmaToken: boolean; resend: boolean }; status: SyncStatus; events: EventRow[]; sample: { sheetUrl: string } | null }) {
   const [f, setF] = useState(initial);
   const [saved, setSaved] = useState(initial);
+  const [status, setStatus] = useState(initialStatus);
   const [events, setEvents] = useState(initialEvents);
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const [testMsg, setTestMsg] = useState<Partial<Record<Target, { kind: 'ok' | 'err'; text: string }>>>({});
+  const [msg, setMsg] = useState<Note | null>(null);
+  const [testMsg, setTestMsg] = useState<Partial<Record<Target | SyncTarget, Note>>>({});
+  const [preview, setPreview] = useState<{ date: string; label: string }[]>([]);
   const [busy, setBusy] = useState(false);
 
   const set = <K extends keyof IntegrationConfig>(k: K, v: IntegrationConfig[K]) => setF((s) => ({ ...s, [k]: v }));
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
 
-  async function save() {
+  async function save(): Promise<boolean> {
     setBusy(true);
     setMsg(null);
-    const r = await api<{ config: Record<string, unknown> }>(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: f });
+    const r = await api<{ config: { klaviyoConnected: boolean; klaviyoKeyHint: string | null } }>(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: f });
     setBusy(false);
-    if (!r.ok) return setMsg({ kind: 'err', text: r.error });
-    setSaved(f);
+    if (!r.ok) {
+      setMsg({ kind: 'err', text: r.error });
+      return false;
+    }
+    const next = { ...f, klaviyoKey: '' };
+    setF(next);
+    setSaved(next);
+    setStatus((s) => ({ ...s, klaviyoConnected: r.data.config.klaviyoConnected, klaviyoHint: r.data.config.klaviyoKeyHint }));
     setMsg({ kind: 'ok', text: 'Saved.' });
+    return true;
   }
 
   async function test(target: Target) {
@@ -58,6 +86,28 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
     setTestMsg((t) => ({ ...t, [target]: r.ok ? { kind: 'ok', text: r.data.message } : { kind: 'err', text: r.error } }));
   }
 
+  async function sync(target: SyncTarget) {
+    setBusy(true);
+    setTestMsg((t) => ({ ...t, [target]: undefined }));
+    const r = await api<{ message: string; preview?: { date: string; label: string }[] }>(`/api/admin/integrations/${workspaceId}/sync`, { body: { target } });
+    setBusy(false);
+    setTestMsg((t) => ({ ...t, [target]: r.ok ? { kind: 'ok', text: r.data.message } : { kind: 'err', text: r.error } }));
+    if (target === 'sheet') {
+      setPreview(r.ok ? (r.data.preview ?? []) : []);
+      setStatus((s) => ({ ...s, sheetError: r.ok ? null : r.error, sheetSyncedOn: 'just now' }));
+    } else setStatus((s) => ({ ...s, klaviyoError: r.ok ? null : r.error, klaviyoSyncedOn: 'just now' }));
+  }
+
+  async function removeKlaviyo() {
+    if (!window.confirm('Disconnect Klaviyo for this client? Results already synced stay in the history.')) return;
+    setBusy(true);
+    const r = await api(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: { ...saved, klaviyoKey: 'remove' } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ kind: 'err', text: r.error });
+    setStatus((s) => ({ ...s, klaviyoConnected: false, klaviyoHint: null, klaviyoError: null, klaviyoSyncedOn: null }));
+    setMsg({ kind: 'ok', text: 'Klaviyo disconnected.' });
+  }
+
   async function retry(id: string) {
     setBusy(true);
     const r = await api<{ event: EventRow & { sentAt: string } }>(`/api/admin/integrations/events/${id}`, { body: {} });
@@ -66,13 +116,14 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
     setEvents((list) => list.map((e) => (e.id === id ? { ...e, status: r.data.event.status, error: r.data.event.error, result: r.data.event.result, attempts: r.data.event.attempts } : e)));
   }
 
-  const Status = ({ on, label, warn }: { on: boolean; label: string; warn?: string }) => <span className={'status ' + (on ? 'ok' : warn ? 'warn' : 'off')}>{on ? label : warn || 'Not connected'}</span>;
+  const Status = ({ on, label, warn }: { on: boolean; label: string; warn?: string }) => <span className={'status ' + (warn ? 'warn' : on ? 'ok' : 'off')}>{warn || (on ? label : 'Not connected')}</span>;
+  const Result = ({ t }: { t: Target | SyncTarget }) => (testMsg[t] ? <span className={testMsg[t]!.kind === 'ok' ? 'ok' : 'err'}>{testMsg[t]!.text}</span> : null);
 
   return (
     <div className="conn">
       {msg && <div className={msg.kind}>{msg.text}</div>}
 
-      <div className="panel">
+      <div className="panel" data-conn="slack">
         <div className="k">Slack</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h3>Client channel</h3>
@@ -87,7 +138,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
             <input type="text" value={f.slackWebhookUrl} onChange={(e) => set('slackWebhookUrl', e.target.value)} placeholder="https://hooks.slack.com/services/T000/B000/xxxx" />
           </label>
           <label className="inline" style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <input type="checkbox" checked={f.slackQuietUpdates} onChange={(e) => set('slackQuietUpdates', e.target.checked)} style={{ width: 'auto' }} />
+            <input type="checkbox" checked={f.slackQuietUpdates} onChange={(e) => set('slackQuietUpdates', e.target.checked)} style={{ width: 'auto', flex: 'none' }} />
             <span>Only post what needs attention from ECD (skip approvals, holds, scheduling and uploads)</span>
           </label>
         </div>
@@ -95,11 +146,11 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
           <button className="btn sm" type="button" disabled={busy || !saved.slackWebhookUrl || dirty} onClick={() => test('slack')}>
             Send a test message
           </button>
-          {testMsg.slack && <span className={testMsg.slack.kind === 'ok' ? 'ok' : 'err'}>{testMsg.slack.text}</span>}
+          <Result t="slack" />
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel" data-conn="asana">
         <div className="k">Asana</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h3>Tasks for edits</h3>
@@ -128,18 +179,18 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
           <button className="btn sm" type="button" disabled={busy || !saved.asanaProjectGid || dirty} onClick={() => test('asana')}>
             Check the connection
           </button>
-          {testMsg.asana && <span className={testMsg.asana.kind === 'ok' ? 'ok' : 'err'}>{testMsg.asana.text}</span>}
+          <Result t="asana" />
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel" data-conn="figma">
         <div className="k">Figma</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h3>Design file</h3>
           <Status on={!!saved.figmaFileKey && env.figmaToken} label="Connected" warn={saved.figmaFileKey && !env.figmaToken ? 'Token missing' : undefined} />
         </div>
         <p className="small" style={{ margin: 0 }}>
-          With <code>FIGMA_ACCESS_TOKEN</code> set{env.figmaToken ? ' (it is)' : ' (not yet)'}, a campaign can pull its frame straight from a Figma link as a new version. The file key here is the default file for this client, the part of the URL after /design/.
+          With <code>FIGMA_ACCESS_TOKEN</code> set{env.figmaToken ? ' (it is)' : ' (not yet)'}, Import from Figma lists the frames of a file so you can bring them in as campaigns. The file key here is the default file for this client, the part of the URL after /design/.
         </p>
         <div className="form">
           <label>
@@ -151,11 +202,108 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
           <button className="btn sm" type="button" disabled={busy || !saved.figmaFileKey || dirty} onClick={() => test('figma')}>
             Check the file
           </button>
-          {testMsg.figma && <span className={testMsg.figma.kind === 'ok' ? 'ok' : 'err'}>{testMsg.figma.text}</span>}
+          <Result t="figma" />
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel" data-conn="klaviyo">
+        <div className="k">Klaviyo</div>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h3>Results of sent emails</h3>
+          <Status on={status.klaviyoConnected} label="Connected" warn={status.klaviyoConnected && status.klaviyoError ? 'Needs attention' : undefined} />
+        </div>
+        <p className="small" style={{ margin: 0 }}>
+          Pulls every sent email campaign from this client&apos;s Klaviyo account with recipients, opens, clicks and revenue, and shows them in Sent history for ECD and the client. Refreshes every three hours. In Klaviyo: Settings, API keys, create a private key with read access to campaigns, metrics and reporting. The key is stored encrypted and never shown again.
+        </p>
+        <div className="form">
+          <label>
+            <b>{status.klaviyoConnected ? `Private API key (saved as ${status.klaviyoHint ?? 'pk_'}), paste a new one to replace it` : 'Private API key'}</b>
+            <input type="password" value={f.klaviyoKey} onChange={(e) => set('klaviyoKey', e.target.value)} placeholder="pk_..." autoComplete="off" data-testid="klaviyo-key" />
+          </label>
+        </div>
+        {status.klaviyoError && <div className="err">{status.klaviyoError}</div>}
+        <div className="inline">
+          <button className="btn sm" type="button" disabled={busy || !status.klaviyoConnected || dirty} onClick={() => sync('klaviyo')} data-testid="klaviyo-sync">
+            Sync now
+          </button>
+          {status.klaviyoConnected && (
+            <button className="btn sm danger" type="button" disabled={busy} onClick={removeKlaviyo}>
+              Disconnect
+            </button>
+          )}
+          {status.klaviyoSyncedOn && <span className="small">Last synced {status.klaviyoSyncedOn}.</span>}
+          <Result t="klaviyo" />
+        </div>
+      </div>
+
+      <div className="panel" data-conn="sheet">
+        <div className="k">Content calendar</div>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h3>Spreadsheet of planned sends</h3>
+          <Status on={!!saved.sheetUrl} label={`${status.sheetCount} on the calendar`} warn={saved.sheetUrl && status.sheetError ? 'Needs attention' : undefined} />
+        </div>
+        <p className="small" style={{ margin: 0 }}>
+          Paste the link to the Google Sheet where sends are planned. The bank reads it every 15 minutes, shows each planned send on the calendar, and keeps that day from being double booked. In Google Sheets set sharing to Anyone with the link can view. Excel works too: publish or export it as CSV and paste that link.
+        </p>
+        {sample && !f.sheetUrl && (
+          <div className="sample">
+            Sample mode is on.{' '}
+            <button type="button" className="link" style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }} onClick={() => setF((s) => ({ ...s, sheetUrl: sample.sheetUrl, sheetFilterColumn: 'Client', sheetFilterValue: 'Blessed Botanicals' }))} data-testid="sheet-sample">
+              Use the sample calendar
+            </button>{' '}
+            to see how it works.
+          </div>
+        )}
+        <div className="form">
+          <label>
+            <b>Spreadsheet link</b>
+            <input type="text" value={f.sheetUrl} onChange={(e) => set('sheetUrl', e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0" data-testid="sheet-url" />
+          </label>
+          <div className="row2">
+            <label>
+              <b>Date column, optional</b>
+              <input type="text" value={f.sheetDateColumn} onChange={(e) => set('sheetDateColumn', e.target.value)} placeholder="Found on its own, for example Send Date" />
+            </label>
+            <label>
+              <b>Campaign name column, optional</b>
+              <input type="text" value={f.sheetNameColumn} onChange={(e) => set('sheetNameColumn', e.target.value)} placeholder="Found on its own, for example Campaign" />
+            </label>
+          </div>
+          <div className="row2">
+            <label>
+              <b>Only rows where this column</b>
+              <input type="text" value={f.sheetFilterColumn} onChange={(e) => set('sheetFilterColumn', e.target.value)} placeholder="Client" />
+            </label>
+            <label>
+              <b>Contains</b>
+              <input type="text" value={f.sheetFilterValue} onChange={(e) => set('sheetFilterValue', e.target.value)} placeholder="Blessed Botanicals" />
+            </label>
+          </div>
+          <span className="small">Use the last two fields when one sheet holds every client. Leave them empty when the sheet is for this client only.</span>
+        </div>
+        {status.sheetError && <div className="err">{status.sheetError}</div>}
+        <div className="inline">
+          <button className="btn sm" type="button" disabled={busy || !saved.sheetUrl || dirty} onClick={() => sync('sheet')} data-testid="sheet-sync">
+            Sync now
+          </button>
+          {status.sheetSyncedOn && <span className="small">Last read {status.sheetSyncedOn}.</span>}
+          <Result t="sheet" />
+        </div>
+        {preview.length > 0 && (
+          <table className="tbl" data-testid="sheet-preview">
+            <tbody>
+              {preview.map((p, i) => (
+                <tr key={i}>
+                  <td style={{ whiteSpace: 'nowrap', width: 90 }}>{p.date}</td>
+                  <td>{p.label}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="panel" data-conn="webhook">
         <div className="k">Webhook</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h3>Anything else</h3>
@@ -180,15 +328,15 @@ export function IntegrationsPanel({ workspaceId, initial, env, events: initialEv
           <button className="btn sm" type="button" disabled={busy || !saved.webhookUrl || dirty} onClick={() => test('webhook')}>
             Send a test delivery
           </button>
-          {testMsg.webhook && <span className={testMsg.webhook.kind === 'ok' ? 'ok' : 'err'}>{testMsg.webhook.text}</span>}
+          <Result t="webhook" />
         </div>
       </div>
 
-      <div className="inline">
+      <div className="sticky-bar">
         <button className="btn primary" type="button" disabled={busy || !dirty} onClick={save} data-testid="save-integrations">
           Save connections
         </button>
-        {dirty && <span className="small">Unsaved changes.</span>}
+        {dirty && <span className="small">Unsaved changes. Save before testing or syncing.</span>}
       </div>
 
       <div className="panel">

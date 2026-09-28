@@ -243,7 +243,7 @@ export function CampaignEditor({ workspaceId, base, campaign, today, figmaEnable
         {!isNew && (
           <span>
             <button type="button" className="btn sm" disabled={busy || !f.figmaUrl || !figmaEnabled} onClick={pullFigma}>
-              Pull frame from Figma
+              Pull the latest from Figma
             </button>
           </span>
         )}

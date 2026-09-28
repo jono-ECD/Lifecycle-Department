@@ -1,37 +1,32 @@
 // Top strip for admin pages. Server component, plain links.
-export function AdminNav({ slug, name, current }: { slug?: string; name?: string; current?: 'workspaces' | 'bank' | 'new' | 'activity' | 'settings' | 'integrations' | 'team' }) {
+type Current = 'workspaces' | 'bank' | 'new' | 'figma' | 'history' | 'activity' | 'settings' | 'integrations' | 'team';
+
+export function AdminNav({ slug, name, current }: { slug?: string; name?: string; current?: Current }) {
   const base = slug ? `/admin/w/${slug}` : '';
+  const link = (href: string, key: Current, label: string) => (
+    <a href={href} className={current === key ? 'on' : ''}>
+      {label}
+    </a>
+  );
   return (
     <div className="admin-top">
       <a className="brand" href="/admin">
         ECD
       </a>
       <nav>
-        <a href="/admin" className={current === 'workspaces' ? 'on' : ''}>
-          Workspaces
-        </a>
+        {link('/admin', 'workspaces', 'Workspaces')}
         {slug && (
           <>
-            <a href={base} className={current === 'bank' ? 'on' : ''}>
-              {name ?? 'Bank'}
-            </a>
-            <a href={`${base}/campaigns/new`} className={current === 'new' ? 'on' : ''}>
-              Add campaign
-            </a>
-            <a href={`${base}/activity`} className={current === 'activity' ? 'on' : ''}>
-              Activity
-            </a>
-            <a href={`${base}/settings`} className={current === 'settings' ? 'on' : ''}>
-              Reviewers and calendar
-            </a>
-            <a href={`${base}/integrations`} className={current === 'integrations' ? 'on' : ''}>
-              Connections
-            </a>
+            {link(base, 'bank', name ?? 'Bank')}
+            {link(`${base}/campaigns/new`, 'new', 'Add campaign')}
+            {link(`${base}/figma`, 'figma', 'Import from Figma')}
+            {link(`${base}/history`, 'history', 'Sent history')}
+            {link(`${base}/activity`, 'activity', 'Activity')}
+            {link(`${base}/settings`, 'settings', 'Reviewers and calendar')}
+            {link(`${base}/integrations`, 'integrations', 'Connections')}
           </>
         )}
-        <a href="/admin/team" className={current === 'team' ? 'on' : ''}>
-          Team
-        </a>
+        {link('/admin/team', 'team', 'Team')}
       </nav>
       <span className="spacer" />
       <form method="post" action="/api/admin/logout">

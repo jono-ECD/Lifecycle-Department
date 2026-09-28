@@ -9,6 +9,8 @@ import { actionsFor, NOTE_REQUIRED, type Action, type ActionDef } from '@/lib/tr
 import { openSlots, windowDates } from '@/lib/slots';
 import { fmtShort } from '@/lib/dates';
 import { PinLayer, type Draft } from '@/components/PinLayer';
+import { sameCampaign } from '@/lib/integrations/sheet';
+import { money, num, pct } from '@/lib/format';
 
 type Filter = 'all' | 'bank' | Status;
 type View = 'gallery' | 'list';
@@ -317,15 +319,18 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
 
   // ---- window ----
   const filled = data.days.filter((d) => d.scheduled.length > 0).length;
-  const openDays = data.days.filter((d) => !d.blocked && d.scheduled.length < ws.maxPerDay).length;
+  const plannedDays = data.days.filter((d) => d.planned.length > 0).length;
+  const openDays = data.days.filter((d) => !d.blocked && d.scheduled.length + d.planned.length < ws.maxPerDay).length;
   const windowLabel = ws.windowDays === 14 ? 'Next two weeks' : `Next ${ws.windowDays} days`;
 
   // ---- slots for the open item ----
   const slotInput = useMemo(() => {
     const cnt: Record<string, number> = {};
-    for (const d of data.days) cnt[d.ymd] = d.scheduled.filter((s) => s.id !== openId).length;
+    // a line in the content calendar for this same campaign must not block its own slot
+    const openName = data.campaigns.find((c) => c.id === openId)?.name ?? '';
+    for (const d of data.days) cnt[d.ymd] = d.scheduled.filter((s) => s.id !== openId).length + d.planned.filter((p) => !sameCampaign(openName, p.label)).length;
     return { today: data.today, windowDays: ws.windowDays, maxPerDay: ws.maxPerDay, counts: cnt, blocked: data.days.filter((d) => d.blocked).map((d) => d.ymd), role };
-  }, [data.days, data.today, ws.windowDays, ws.maxPerDay, role, openId]);
+  }, [data.days, data.campaigns, data.today, ws.windowDays, ws.maxPerDay, role, openId]);
   const openSet = useMemo(() => new Set(openSlots(slotInput)), [slotInput]);
   const slotDays = useMemo(() => windowDates(data.today, ws.windowDays).filter((d) => isAdmin || d !== data.today), [data.today, ws.windowDays, isAdmin]);
 
@@ -404,24 +409,36 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
             <div className="k">
               {windowLabel}{' '}
               <span id="winsum">
-                {filled} scheduled, {openDays} open
+                {filled} scheduled, {plannedDays > 0 ? `${plannedDays} planned, ` : ''}
+                {openDays} open
               </span>
             </div>
             <div className="days" id="days" style={ws.windowDays !== 14 ? { gridTemplateColumns: `repeat(${Math.min(ws.windowDays, 14)},1fr)` } : undefined}>
               {data.days.map((d) => {
                 const has = d.scheduled.length > 0;
-                const cls = 'day' + (d.today ? ' today' : '') + (has ? ' has pick' : '') + (d.blocked ? ' blocked' : '');
-                const title = has ? d.scheduled.map((s) => s.name).join(', ') : d.blocked ? `Blocked: ${d.blocked}` : undefined;
+                const planned = d.planned.length > 0;
+                const plannedNames = d.planned.map((x) => x.label).join(', ');
+                const cls = 'day' + (d.today ? ' today' : '') + (has ? ' has pick' : planned ? ' planned pick' : '') + (d.blocked ? ' blocked' : '');
+                const title = [has ? d.scheduled.map((s) => s.name).join(', ') : '', planned ? `Planned by ECD: ${plannedNames}` : '', d.blocked ? `Blocked: ${d.blocked}` : ''].filter(Boolean).join('. ') || undefined;
+                const click = has ? () => openItem(d.scheduled[0].id) : planned ? () => showToast(`${fmtShort(d.ymd)} is planned: ${plannedNames}`) : undefined;
                 return (
-                  <button key={d.ymd} type="button" className={cls} title={title} onClick={has ? () => openItem(d.scheduled[0].id) : undefined} tabIndex={has ? 0 : -1} aria-label={`${fmtShort(d.ymd)}${title ? `, ${title}` : ''}`}>
+                  <button key={d.ymd} type="button" className={cls} title={title} onClick={click} tabIndex={has || planned ? 0 : -1} aria-label={`${fmtShort(d.ymd)}${title ? `, ${title}` : ''}`} data-planned={planned ? d.planned.length : undefined}>
                     <b>{d.day}</b>
                     <span>{d.wd}</span>
                     {has && <span className={'chip' + (d.scheduled.length > 1 ? ' two' : '')}>{d.scheduled.length > 1 ? `${d.scheduled.length} EM` : 'EM'}</span>}
+                    {planned && <span className={'chip plan' + (d.planned.length > 1 ? ' two' : '')}>{d.planned.length > 1 ? `${d.planned.length} EM` : 'EM'}</span>}
                   </button>
                 );
               })}
             </div>
-            <div className="foot">Any open day can take an approved campaign. Pick the slot, we handle the rest.</div>
+            <div className="foot">
+              Any open day can take an approved campaign. Pick the slot, we handle the rest.
+              {data.days.some((d) => d.planned.length > 0) && (
+                <span className="legend">
+                  <i className="chip" /> scheduled here <i className="chip plan" /> planned by ECD
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -445,6 +462,9 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
               {STATUS[s]} <span className="n">{counts[s] ?? 0}</span>
             </button>
           ))}
+          <a className="hist" href={isAdmin ? `${adminBase ?? '/admin'}/history` : '/bank/history'}>
+            Sent history
+          </a>
         </div>
 
         {data.campaigns.length === 0 ? (
@@ -686,6 +706,40 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                   </>
                 )}
               </div>
+              {open.results && (
+                <div className="results" id="results">
+                  <div className="k">
+                    Results <span>{open.results.sentOn ? `sent ${open.results.sentOn}` : ''}</span>
+                  </div>
+                  <div className="tiles">
+                    {open.results.openRate != null && (
+                      <div>
+                        <b>{pct(open.results.openRate)}</b>
+                        <span>opened</span>
+                      </div>
+                    )}
+                    {open.results.clickRate != null && (
+                      <div>
+                        <b>{pct(open.results.clickRate)}</b>
+                        <span>clicked</span>
+                      </div>
+                    )}
+                    {open.results.revenue != null && (
+                      <div>
+                        <b>{money(open.results.revenue)}</b>
+                        <span>revenue</span>
+                      </div>
+                    )}
+                    {open.results.recipients != null && (
+                      <div>
+                        <b>{num(open.results.recipients)}</b>
+                        <span>recipients</span>
+                      </div>
+                    )}
+                  </div>
+                  {open.results.subject && <div className="small">Subject line: {open.results.subject}</div>}
+                </div>
+              )}
               <div className="actions" id="dactions">
                 {actions.map((def) => (
                   <button key={def.action} type="button" className={'b ' + def.cls} disabled={busy} onClick={() => act(open, def)}>
