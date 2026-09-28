@@ -19,7 +19,7 @@ export async function payloadFor(
   return {
     type,
     workspace: { id: c.workspaceId, name: c.workspace.name, slug: c.workspace.slug },
-    campaign: { id: c.id, name: c.name, subtitle: c.subtitle, status: c.status, version: c.currentVersion },
+    campaign: { id: c.id, name: c.name, subtitle: c.subtitle, status: c.status, version: c.currentVersion, asanaTaskGid: c.asanaTaskGid },
     actor: { role: actor.role, name: actor.name },
     text: extra.text,
     em: extra.em,
@@ -29,4 +29,9 @@ export async function payloadFor(
     links: { admin: `${base()}/admin/w/${c.workspace.slug}${query}`, reviewer: `${base()}/bank${query}` },
     at: new Date().toISOString(),
   };
+}
+
+/** Actions taken by a sync, not by a person. Shown as "ECD" to clients. */
+export function systemActor(name: string): Actor {
+  return { role: 'admin', name, id: `system:${name.toLowerCase()}`, admin: { id: `system:${name.toLowerCase()}`, name, email: '', passwordHash: '', role: 'admin', createdAt: new Date(0) } };
 }

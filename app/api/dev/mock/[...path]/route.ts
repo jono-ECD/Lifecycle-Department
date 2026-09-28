@@ -14,6 +14,9 @@ const FRAMES = [
   { id: '20:1', name: 'Holiday Gift Guide', color: '#7a2f4f', h: 2400 },
 ];
 
+const g = globalThis as unknown as { __figmaRev?: number };
+const rev = () => g.__figmaRev ?? 1;
+
 function off() {
   return NextResponse.json({ error: 'Not found' }, { status: 404 });
 }
@@ -33,6 +36,7 @@ async function framePng(id: string, scale: number): Promise<Buffer> {
     ${Array.from({ length: 9 }, (_, i) => `<rect x="90" y="${900 + i * 46}" width="${420 - (i % 3) * 60}" height="16" rx="8" fill="#d9d5ca"/>`).join('')}
     <rect y="${f.h - 360}" width="600" height="360" fill="${f.color}"/>
     <text x="300" y="${f.h - 170}" font-family="Georgia,serif" font-size="32" fill="#fff" text-anchor="middle">Sample frame from the Figma stand in</text>
+    ${rev() > 1 ? `<text x="300" y="${f.h - 110}" font-family="Helvetica,Arial,sans-serif" font-size="22" fill="#fff" text-anchor="middle">revision ${rev()}</text>` : ''}
   </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
@@ -45,11 +49,16 @@ export async function GET(req: Request, ctx: Ctx) {
   const [service, ...rest] = path;
 
   if (service === 'figma') {
+    if (rest[0] === '_bump') {
+      g.__figmaRev = rev() + 1;
+      return NextResponse.json({ revision: rev() });
+    }
     if (rest[0] === 'files' && rest[2] === 'comments') return NextResponse.json({ comments: [] });
     if (rest[0] === 'files') {
       const node = (f: (typeof FRAMES)[number]) => ({ id: f.id, name: f.name, type: 'FRAME', absoluteBoundingBox: { x: 0, y: 0, width: 600, height: f.h } });
       return NextResponse.json({
         name: 'Blessed Botanicals, Q4 emails',
+        lastModified: `2026-09-28T00:00:${String(rev()).padStart(2, '0')}Z`,
         document: { children: [{ id: '10:0', name: 'October', type: 'CANVAS', children: FRAMES.slice(0, 3).map(node) }, { id: '20:0', name: 'Holiday', type: 'CANVAS', children: FRAMES.slice(3).map(node) }] },
       });
     }

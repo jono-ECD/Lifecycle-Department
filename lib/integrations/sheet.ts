@@ -207,6 +207,93 @@ export function readCalendar(rows: string[][], cfg: SheetConfig, today: Ymd): Sh
   return { items, headers, dateColumn: dateIdx >= 0 ? (headers[dateIdx] ?? null) : null, nameColumn: nameIdx >= 0 ? (headers[nameIdx] ?? null) : null, rows: body.length, skipped };
 }
 
+const MONTH_TITLE = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+(\d{4}))?$/i;
+const dayNumber = (c: string) => (/^\d{1,2}$/.test(c) && Number(c) >= 1 && Number(c) <= 31 ? Number(c) : null);
+
+/** A row of a calendar grid that holds the day numbers of one week. */
+function weekRow(row: string[]): Map<number, number> | null {
+  const days = new Map<number, number>();
+  row.forEach((c, i) => {
+    const n = dayNumber(c);
+    if (n !== null) days.set(i, n);
+  });
+  if (days.size < 4) return null;
+  // consecutive days, allowing the month to roll over inside the week
+  const seq = [...days.values()];
+  const ok = seq.every((n, i) => i === 0 || n === seq[i - 1] + 1 || (n === 1 && seq[i - 1] >= 28));
+  return ok ? days : null;
+}
+
+export function looksLikeGrid(rows: string[][]): boolean {
+  return rows.filter((r) => weekRow(r)).length >= 2;
+}
+
+/**
+ * Reads a calendar laid out as a month grid: a month title, rows of day numbers, and what is planned
+ * written in the cells under each day. Days that belong to the month before or after are dated right.
+ */
+export function readGrid(rows: string[][], today: Ymd): SheetResult {
+  const items: SheetItem[] = [];
+  let year = Number(today.slice(0, 4));
+  let month = Number(today.slice(5, 7));
+  let titled = false;
+  let cols: Map<number, Ymd> | null = null;
+  let firstWeek = true;
+  let weeks = 0;
+
+  const shift = (y: number, m: number, by: number) => {
+    const d = new Date(Date.UTC(y, m - 1 + by, 1));
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 };
+  };
+
+  for (const row of rows) {
+    const title = row.map((c) => c.match(MONTH_TITLE)).find(Boolean);
+    if (title && !weekRow(row)) {
+      const m = MONTHS[title[1].slice(0, 4).toLowerCase()] ?? MONTHS[title[1].slice(0, 3).toLowerCase()];
+      if (m) {
+        if (title[2]) year = Number(title[2]);
+        else if (titled && m < month) year += 1;
+        else if (!titled) year = Number((nearestYear(m, 15, today) ?? today).slice(0, 4));
+        month = m;
+        titled = true;
+        firstWeek = true;
+        cols = null;
+      }
+      continue;
+    }
+    const week = weekRow(row);
+    if (week) {
+      weeks++;
+      const seq = [...week.entries()];
+      const rollAt = seq.findIndex(([, n], i) => i > 0 && n < seq[i - 1][1]);
+      cols = new Map();
+      seq.forEach(([col, n], i) => {
+        let ym = { y: year, m: month };
+        if (rollAt > 0) {
+          // in the first week the days before the roll are last month; later they are next month
+          if (firstWeek && i < rollAt) ym = shift(year, month, -1);
+          if (!firstWeek && i >= rollAt) ym = shift(year, month, 1);
+        } else if (firstWeek && n >= 23) ym = shift(year, month, -1);
+        const d = build(ym.y, ym.m, n);
+        if (d) cols!.set(col, d);
+      });
+      firstWeek = false;
+      continue;
+    }
+    if (!cols) continue;
+    row.forEach((cell, col) => {
+      const date = cols!.get(col);
+      if (!date || !cell) return;
+      for (const line of cell.split(/\r?\n/)) {
+        const label = line.trim();
+        if (!label || dayNumber(label) !== null || SKIP_NOTE.test(label)) continue;
+        items.push({ date, label: label.slice(0, 200), note: null });
+      }
+    });
+  }
+  return { items, headers: [], dateColumn: weeks ? 'month grid' : null, nameColumn: weeks ? 'cells under each day' : null, rows: rows.length, skipped: 0 };
+}
+
 export async function fetchCalendar(url: string, cfg: SheetConfig, today: Ymd, fetchImpl: typeof fetch = fetch): Promise<SheetResult> {
   const csvUrl = toCsvUrl(url);
   if (!csvUrl) throw new Error('That does not look like a spreadsheet link.');
@@ -214,7 +301,9 @@ export async function fetchCalendar(url: string, cfg: SheetConfig, today: Ymd, f
   if (!r.ok) throw new Error(r.status === 401 || r.status === 403 || r.status === 404 ? 'The sheet is not shared. Set sharing to "Anyone with the link can view".' : `The sheet answered ${r.status}.`);
   const text = await r.text();
   if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('The sheet is not shared. Set sharing to "Anyone with the link can view".');
-  const result = readCalendar(parseCsv(text), cfg, today);
+  const rows = parseCsv(text);
+  // a calendar drawn as a month grid is read by position, a list is read by column
+  const result = !cfg.dateColumn && looksLikeGrid(rows) ? readGrid(rows, today) : readCalendar(rows, cfg, today);
   if (!result.dateColumn) throw new Error('No date column found. Name the column in the settings below.');
   if (!result.nameColumn) throw new Error('No campaign name column found. Name the column in the settings below.');
   return result;

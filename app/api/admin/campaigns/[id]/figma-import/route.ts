@@ -23,7 +23,8 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
     if (ref?.nodeId) await db.campaign.update({ where: { id }, data: { figmaFileKey: ref.fileKey, figmaNodeId: ref.nodeId, figmaNodeIds: ref.nodeId } });
   }
   try {
-    return json(await refreshFromFigma(id, actor));
+    const r = await refreshFromFigma(id, actor);
+    return json({ ...r, message: r.unchanged ? 'Nothing changed in Figma since the last version.' : r.reopened ? 'New version pulled. The earlier approval no longer applies, so it is back in review.' : 'New version pulled.' });
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(400, (err as Error).message);

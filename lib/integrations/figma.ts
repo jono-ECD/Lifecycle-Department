@@ -105,6 +105,12 @@ export class FigmaClient {
     return { name: res.name, pages: pages.filter((p) => p.frames.length > 0) };
   }
 
+  /** When the file last changed. One cheap call per file, used to decide whether frames need a fresh render. */
+  async lastModified(fileKey: string): Promise<string | null> {
+    const res = await this.get<{ lastModified?: string }>(`/files/${fileKey}?depth=1`);
+    return res.lastModified ?? null;
+  }
+
   /** Top level frames of the first page. Kept for the connection check. */
   async frames(fileKey: string): Promise<{ id: string; name: string }[]> {
     const { pages } = await this.pages(fileKey, false);

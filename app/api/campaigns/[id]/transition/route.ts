@@ -5,7 +5,7 @@ import { performAction } from '@/lib/actions';
 import { loadBank } from '@/lib/bank';
 
 const Body = z.object({
-  action: z.enum(['approve', 'request_changes', 'hold', 'back_to_review', 'schedule', 'unschedule', 'move_to_review', 'mark_sent', 'move_date', 'reopen']),
+  action: z.enum(['approve', 'request_changes', 'hold', 'back_to_review', 'request_date', 'withdraw_date', 'confirm_date', 'schedule', 'unschedule', 'move_to_review', 'mark_sent', 'move_date', 'reopen']),
   note: z.string().max(4000).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick an open slot.').optional(),
 });

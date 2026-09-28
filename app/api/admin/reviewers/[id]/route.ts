@@ -13,9 +13,10 @@ const Body = z.discriminatedUnion('op', [
   z.object({ op: z.literal('link') }),
   z.object({ op: z.literal('set_pin'), pin: z.string().regex(/^\d{4}$/, 'The PIN is 4 digits.') }),
   z.object({ op: z.literal('clear_pin') }),
+  z.object({ op: z.literal('set_approver'), canApprove: z.boolean() }),
 ]);
 
-// Revoke a link, issue a new one, or manage the optional PIN.
+// Revoke a link, issue a new one, manage the optional PIN, or change who may approve.
 export const POST = handler(async (req, ctx: Ctx) => {
   await requireAdminActor();
   const { id } = await ctx.params;
@@ -41,6 +42,9 @@ export const POST = handler(async (req, ctx: Ctx) => {
       return json({ ok: true });
     case 'clear_pin':
       await db.reviewer.update({ where: { id }, data: { pinHash: null } });
+      return json({ ok: true });
+    case 'set_approver':
+      await db.reviewer.update({ where: { id }, data: { canApprove: body.canApprove } });
       return json({ ok: true });
   }
 });

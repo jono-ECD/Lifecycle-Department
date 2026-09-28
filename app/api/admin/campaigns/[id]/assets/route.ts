@@ -6,6 +6,7 @@ import { addVersion, filesFrom } from '@/lib/admin';
 type Ctx = { params: Promise<{ id: string }> };
 
 // Upload a new version: replaces the visible set, increments the version, records it in the thread.
+// An approval covers one version, so a new one sends approved work back to review.
 export const POST = handler(async (req, ctx: Ctx) => {
   const actor = await requireAdminActor();
   const { id } = await ctx.params;
@@ -13,8 +14,8 @@ export const POST = handler(async (req, ctx: Ctx) => {
   if (!c) throw new ApiError(404, 'That campaign is not here.');
   const form = await req.formData();
   const files = await filesFrom(form);
-  const { version, assets } = await addVersion(id, files, actor);
-  return json({ version, count: assets.length });
+  const r = await addVersion(id, { files }, actor);
+  return json({ version: r.version, count: r.count, reopened: r.reopened });
 });
 
 const Order = z.object({ order: z.array(z.string().min(1)).min(1) });

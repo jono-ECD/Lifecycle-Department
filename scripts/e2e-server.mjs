@@ -23,7 +23,8 @@ export const E2E_ENV = {
   FIGMA_ACCESS_TOKEN: 'sample',
   FIGMA_API_BASE: 'http://localhost:3100/api/dev/mock/figma',
   KLAVIYO_API_BASE: 'http://localhost:3100/api/dev/mock/klaviyo',
-  ASANA_ACCESS_TOKEN: '',
+  ASANA_ACCESS_TOKEN: 'sample',
+  ASANA_API_BASE: 'http://localhost:3100/api/dev/mock/asana',
 };
 
 const env = { ...process.env, ...E2E_ENV };

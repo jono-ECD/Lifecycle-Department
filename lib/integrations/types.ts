@@ -11,18 +11,19 @@ export type IntegrationEventType =
   | 'approved'
   | 'hold'
   | 'back_to_review'
+  | 'date_requested'
   | 'scheduled'
   | 'unscheduled'
   | 'moved_to_review'
   | 'marked_sent'
   | 'version_uploaded';
 
-export type IntegrationTarget = 'slack' | 'asana' | 'webhook';
+export type IntegrationTarget = 'slack' | 'asana' | 'webhook' | 'sheet';
 
 export interface EventPayload {
   type: IntegrationEventType;
   workspace: { id: string; name: string; slug: string };
-  campaign: { id: string; name: string; subtitle: string; status: string; version: number };
+  campaign: { id: string; name: string; subtitle: string; status: string; version: number; asanaTaskGid?: string | null };
   actor: { role: 'admin' | 'reviewer'; name: string };
   /** The client's words, verbatim. */
   text?: string;
@@ -38,6 +39,8 @@ export interface EventPayload {
 
 /** Events that are actions for ECD, as opposed to status updates. */
 export const ACTIONABLE: IntegrationEventType[] = ['change_request', 'comment', 'pin_created', 'pin_reply'];
+/** Client decisions. These are what the Bank owns and writes to the campaign's Asana task. */
+export const DECISIONS: IntegrationEventType[] = ['approved', 'change_request', 'hold', 'date_requested', 'unscheduled', 'back_to_review'];
 
 export function headline(p: EventPayload): string {
   const who = p.actor.name;
@@ -56,15 +59,17 @@ export function headline(p: EventPayload): string {
     case 'pin_reopened':
       return `${who} reopened note ${p.pin?.number ?? ''} on ${c}`.replace('  ', ' ');
     case 'approved':
-      return `${who} approved ${c}`;
+      return `${who} approved ${c}${p.campaign.version ? `, version ${p.campaign.version}` : ''}`;
     case 'hold':
       return `${who} put ${c} on hold`;
     case 'back_to_review':
       return `${who} moved ${c} back to review`;
+    case 'date_requested':
+      return `${who} requested ${p.date ?? 'a date'} for ${c}`;
     case 'scheduled':
       return `${who} scheduled ${c}${p.date ? ` for ${p.date}` : ''}`;
     case 'unscheduled':
-      return `${who} unscheduled ${c}`;
+      return `${who} took ${c} off the calendar`;
     case 'moved_to_review':
       return `${who} moved ${c} to review`;
     case 'marked_sent':
