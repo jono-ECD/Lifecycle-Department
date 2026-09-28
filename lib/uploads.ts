@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { db } from '@/lib/db';
 import { getStorage } from '@/lib/storage';
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_PDF_BYTES, PDF_TYPE, extFor, pdfThumbnail, processImage } from '@/lib/images';
@@ -10,6 +10,8 @@ export interface IncomingFile {
 }
 
 export class UploadError extends Error {}
+
+export const hashOf = (data: Buffer | string) => createHash('sha256').update(data).digest('hex');
 
 export function validateFile(f: { name: string; type: string; size: number }): void {
   if (IMAGE_TYPES.includes(f.type)) {
@@ -59,11 +61,21 @@ export async function storeVersion(campaignId: string, version: number, files: I
           originalName: f.name,
           size: f.buffer.length,
           uploadedBy,
+          contentHash: hashOf(f.buffer),
         },
       }),
     );
   }
   return created;
+}
+
+/** SMS has no frame. The copy is the version, shown as a text preview. */
+export async function storeSmsVersion(campaignId: string, version: number, text: string, uploadedBy: string) {
+  return [
+    await db.campaignAsset.create({
+      data: { campaignId, version, kind: 'sms', path: `campaigns/${campaignId}/v${version}/sms.txt`, orderIndex: 0, originalName: 'SMS copy', size: text.length, uploadedBy, text, contentHash: hashOf(text) },
+    }),
+  ];
 }
 
 export function assetUrl(path: string | null | undefined): string | null {

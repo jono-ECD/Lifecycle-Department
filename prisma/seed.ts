@@ -90,6 +90,7 @@ async function main() {
         position: pos++,
         createdBy: 'ECD',
         currentVersion: it.img ? 1 : 0,
+        ...(['approved', 'scheduled'].includes(it.status) ? { approvedVersion: it.img ? 1 : null, approvedBy: it.img ? reviewerName : null, approvedAt: it.img ? t(it.since) : null } : {}),
         reviewEnteredAt: it.status === 'review' ? t(it.since) : null,
         reviewNotifiedAt: it.status === 'review' ? t(it.since) : null,
         createdAt: d(it.built),

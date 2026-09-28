@@ -11,15 +11,19 @@ datasource db {
 }
 
 model Workspace {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  logoPath   String?
-  brandColor String?
-  timezone   String   @default("America/Chicago")
-  windowDays Int      @default(14)
-  maxPerDay  Int      @default(1)
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  logoPath         String?
+  brandColor       String?
+  timezone         String   @default("America/Chicago")
+  windowDays       Int      @default(14)
+  maxPerDay        Int      @default(1)
+  // Clients see In review onward plus On hold. Drafts are ECD's unless this is on.
+  clientSeesDrafts Boolean  @default(false)
+  // "open": every day can take a send unless blocked. "listed": only the days ECD opens.
+  slotMode         String   @default("open")
+  createdAt        DateTime @default(now())
 
   campaigns   Campaign[]
   reviewers   Reviewer[]
@@ -28,6 +32,7 @@ model Workspace {
   events      IntegrationEvent[]
   schedule    ScheduleItem[]
   klaviyo     KlaviyoCampaign[]
+  openSlots   OpenSlot[]
 }
 
 // Per client connections. Agency level tokens (Asana, Figma) live in env; these are the per workspace targets.
@@ -60,9 +65,25 @@ model WorkspaceIntegration {
   klaviyoSyncedAt DateTime?
   klaviyoError    String?
 
+  // Asana inbound. Stage is bound by field and option id, never by name.
+  asanaStageFieldGid String?
+  asanaStageMap      String?
+  asanaPulledAt      DateTime?
+  asanaPullSince     DateTime?
+  asanaPullError     String?
+
+  // Outbound "Campaign Bank" tab: a read only feed the sheet can import, and the Sheets API target.
+  feedToken      String?
+  googleSheetId  String?
+  googleSheetTab String?
+  sheetPushedAt  DateTime?
+  sheetPushError String?
+
   updatedAt DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([feedToken])
 }
 
 // Items read from the content calendar spreadsheet. They show on the send window and take the day.
@@ -122,6 +143,8 @@ model IntegrationEvent {
   result      String?
   error       String?
   attempts    Int       @default(0)
+  // One job per key. A retry can never enqueue the same side effect twice.
+  dedupKey    String?
   createdAt   DateTime  @default(now())
   sentAt      DateTime?
 
@@ -129,6 +152,7 @@ model IntegrationEvent {
 
   @@index([workspaceId, createdAt])
   @@index([status, createdAt])
+  @@index([dedupKey])
 }
 
 model AdminUser {
@@ -136,37 +160,57 @@ model AdminUser {
   name         String
   email        String   @unique
   passwordHash String
+  // "admin" can do everything. "editor" works on campaigns but not on team, connections or workspaces.
+  role         String   @default("admin")
   createdAt    DateTime @default(now())
 }
 
 model Campaign {
-  id               String    @id @default(cuid())
-  workspaceId      String
-  name             String
-  subtitle         String    @default("")
-  type             String    @default("promo")
-  status           String    @default("draft")
-  builtDate        DateTime
-  lastActivityAt   DateTime  @default(now())
-  scheduledDate    DateTime?
-  sentDate         DateTime?
-  position         Int       @default(0)
-  createdBy        String    @default("ECD")
-  currentVersion   Int       @default(0)
-  reviewEnteredAt  DateTime?
-  reviewNotifiedAt DateTime?
-  figmaUrl         String?
-  figmaNodeId      String?
-  figmaFileKey     String?
-  figmaNodeIds     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  workspaceId       String
+  name              String
+  subtitle          String    @default("")
+  type              String    @default("promo")
+  status            String    @default("draft")
+  builtDate         DateTime
+  lastActivityAt    DateTime  @default(now())
+  scheduledDate     DateTime?
+  sentDate          DateTime?
+  position          Int       @default(0)
+  createdBy         String    @default("ECD")
+  currentVersion    Int       @default(0)
+  reviewEnteredAt   DateTime?
+  reviewNotifiedAt  DateTime?
+  figmaUrl          String?
+  figmaNodeId       String?
+  figmaFileKey      String?
+  figmaNodeIds      String?
+  figmaFileModified String?
+  channel           String    @default("email")
+  // Asana is the source of the campaign when linked. Stage is read from Asana, never invented here.
+  asanaTaskGid      String?
+  asanaUrl          String?
+  asanaStageGid     String?
+  asanaStageName    String?
+  asanaStageWrote   String?
+  plannedDate       DateTime?
+  // Offer window. A promo cannot be booked outside it. Evergreen work has none.
+  validFrom         DateTime?
+  validUntil        DateTime?
+  klaviyoCampaignId String?
+  // An approval covers one design version. A newer version voids it.
+  approvedVersion   Int?
+  approvedBy        String?
+  approvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   assets    CampaignAsset[]
   comments  Comment[]
   pins      PinThread[]
 
+  @@unique([workspaceId, asanaTaskGid])
   @@index([workspaceId, status])
   @@index([workspaceId, scheduledDate])
 }
@@ -182,6 +226,10 @@ model CampaignAsset {
   height       Int?
   orderIndex   Int
   originalName String   @default("")
+  // SMS has no frame: the copy itself is the version.
+  text         String?
+  // Hash of the file, so an unchanged Figma render does not create a new version.
+  contentHash  String?
   size         Int      @default(0)
   uploadedAt   DateTime @default(now())
   uploadedBy   String   @default("ECD")
@@ -276,6 +324,8 @@ model Reviewer {
   email       String
   tokenHash   String    @unique
   pinHash     String?
+  // Approvers decide. Commenters see everything and leave notes.
+  canApprove  Boolean   @default(true)
   lastSeenAt  DateTime?
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())
@@ -297,4 +347,17 @@ model NotificationLog {
   sentAt      DateTime @default(now())
 
   @@index([workspaceId, type, sentAt])
+}
+
+// Send days ECD makes available when the workspace uses listed slots.
+model OpenSlot {
+  id          String   @id @default(cuid())
+  workspaceId String
+  date        DateTime
+  capacity    Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date])
 }

@@ -36,7 +36,19 @@ export async function requireAdmin(): Promise<AdminUser> {
   return admin;
 }
 
+/** Team, connections and workspace settings are for full admins. Editors work on campaigns. */
+export async function requireFullAdmin(): Promise<AdminUser> {
+  const admin = await requireAdmin();
+  if (admin.role !== 'admin') redirect('/admin?denied=1');
+  return admin;
+}
+
 /** Can this actor act on this workspace. Admins can on every workspace, reviewers only on their own. */
 export function actorCanAccess(actor: Actor, workspaceId: string): boolean {
   return actor.role === 'admin' || actor.reviewer.workspaceId === workspaceId;
+}
+
+/** Approval rights are per person. ECD always can; a client only when marked as an approver. */
+export function canDecide(actor: Actor): boolean {
+  return actor.role === 'admin' || actor.reviewer.canApprove;
 }

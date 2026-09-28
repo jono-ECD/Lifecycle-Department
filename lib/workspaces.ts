@@ -16,4 +16,6 @@ export const WorkspaceFields = z.object({
   windowDays: z.coerce.number().int().min(7).max(60).default(14),
   maxPerDay: z.coerce.number().int().min(1).max(5).default(1),
   brandColor: z.string().trim().max(40).optional(),
+  clientSeesDrafts: z.boolean().default(false),
+  slotMode: z.enum(['open', 'listed']).default('open'),
 });

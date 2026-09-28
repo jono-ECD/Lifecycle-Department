@@ -59,19 +59,19 @@ export async function importFrames(workspaceId: string, fileKey: string, items: 
         figmaUrl: frameUrl(fileKey, item.nodeIds[0]),
       },
     });
-    await addVersion(c.id, files, actor);
+    await addVersion(c.id, { files }, actor, { source: 'Figma' });
     created.push({ id: c.id, name: c.name });
   }
   return created;
 }
 
 /** Pulls the campaign's frames again as the next version. */
-export async function refreshFromFigma(campaignId: string, actor: Actor): Promise<{ version: number }> {
+export async function refreshFromFigma(campaignId: string, actor: Actor): Promise<{ version: number; unchanged: boolean; reopened: boolean }> {
   const c = await db.campaign.findUnique({ where: { id: campaignId } });
   if (!c) throw new ApiError(404, 'That campaign is not here.');
   const nodeIds = (c.figmaNodeIds ?? c.figmaNodeId ?? '').split(',').filter(Boolean);
   if (!c.figmaFileKey || nodeIds.length === 0) throw new ApiError(400, 'This campaign has no Figma frames yet. Add the Figma link first.');
   const files = await renderFrames(c.figmaFileKey, nodeIds);
-  const { version } = await addVersion(c.id, files, actor);
-  return { version };
+  const r = await addVersion(c.id, { files }, actor, { skipUnchanged: true, source: 'Figma' });
+  return { version: r.version, unchanged: r.unchanged, reopened: r.reopened };
 }

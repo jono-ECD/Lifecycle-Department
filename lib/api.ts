@@ -51,6 +51,13 @@ export async function requireAdminActor(): Promise<Extract<Actor, { role: 'admin
   return actor;
 }
 
+/** Team, connections and workspace settings are for full admins. Editors work on campaigns. */
+export async function requireFullAdminActor(): Promise<Extract<Actor, { role: 'admin' }>> {
+  const actor = await requireAdminActor();
+  if (actor.admin.role !== 'admin') throw new ApiError(403, 'Only a full admin can change this.');
+  return actor;
+}
+
 /** Wraps a route handler so thrown ApiError and zod errors become JSON responses. */
 export function handler<Ctx>(fn: (req: Request, ctx: Ctx) => Promise<Response>) {
   return async (req: Request, ctx: Ctx): Promise<Response> => {
