@@ -89,7 +89,7 @@ test('admin blocks a day and the reviewer cannot pick it', async ({ page }) => {
   await openReviewerBank(page);
   await expect(page.locator('.day.blocked')).toHaveCount(1);
   await openCard(page, 'Born For Us, Made For You');
-  await page.locator('.b:has-text("Schedule")').click();
+  await page.locator('.b:has-text("Request a send date")').click();
   const slotLabel = new Date(day.ymd + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   await expect(page.locator(`.slot:has-text("${slotLabel}")`)).toBeDisabled();
   await expect(page.locator('.slot:disabled')).toHaveCount(3);

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api } from '@/lib/client';
 
 export function TeamForm() {
-  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const [f, setF] = useState({ name: '', email: '', password: '', role: 'editor' });
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -15,7 +15,7 @@ export function TeamForm() {
     setBusy(false);
     if (!r.ok) return setMsg({ kind: 'err', text: r.error });
     setMsg({ kind: 'ok', text: `${f.name} can now sign in.` });
-    setF({ name: '', email: '', password: '' });
+    setF({ name: '', email: '', password: '', role: 'editor' });
     window.setTimeout(() => window.location.reload(), 800);
   }
 
@@ -35,6 +35,13 @@ export function TeamForm() {
       <label>
         <b>Password</b>
         <input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" />
+      </label>
+      <label>
+        <b>Role</b>
+        <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
+          <option value="editor">Editor: campaigns, reviewers, calendar</option>
+          <option value="admin">Admin: also team, connections and workspaces</option>
+        </select>
       </label>
       <div className="actions-r">
         <button className="btn primary" type="button" disabled={busy || !f.name || !f.email || !f.password} onClick={create}>

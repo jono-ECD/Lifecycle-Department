@@ -114,7 +114,7 @@ test('connections page saves settings, validates them, and logs deliveries once 
   await adminLogin(page);
   await page.goto('/admin/w/blessed-botanicals/integrations');
   await hydrated(page);
-  await expect(page.locator('.conn .panel > .inline > .status')).toHaveText(['Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected']);
+  await expect(page.locator('.conn .panel > .inline > .status')).toHaveText(['Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected', 'Not connected']);
   await page.fill('input[placeholder^="https://hooks.slack.com"]', 'https://example.com/not-slack');
   await page.click('[data-testid=save-integrations]');
   await expect(page.locator('.err')).toContainText('Paste the incoming webhook URL from Slack');

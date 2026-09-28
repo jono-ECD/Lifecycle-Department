@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BankCampaign, BankPayload, BankPin } from '@/lib/bank';
 import { ORDER, STATUS, TYPES, type Status } from '@/lib/status';
-import { actionsFor, NOTE_REQUIRED, type Action, type ActionDef } from '@/lib/transitions';
+import { actionsFor, COMMENTER_ONLY, NOTE_REQUIRED, type Action, type ActionDef } from '@/lib/transitions';
 import { openSlots, windowDates } from '@/lib/slots';
 import { fmtShort } from '@/lib/dates';
 import { PinLayer, type Draft } from '@/components/PinLayer';
@@ -318,9 +318,11 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
   const h = counts.hold ?? 0;
 
   // ---- window ----
+  const held = (d: (typeof data.days)[number]) => d.scheduled.length + d.requested.length + d.planned.length;
   const filled = data.days.filter((d) => d.scheduled.length > 0).length;
+  const requestedDays = data.days.filter((d) => d.requested.length > 0).length;
   const plannedDays = data.days.filter((d) => d.planned.length > 0).length;
-  const openDays = data.days.filter((d) => !d.blocked && d.scheduled.length + d.planned.length < ws.maxPerDay).length;
+  const openDays = data.days.filter((d) => !d.blocked && !d.closed && held(d) < d.capacity).length;
   const windowLabel = ws.windowDays === 14 ? 'Next two weeks' : `Next ${ws.windowDays} days`;
 
   // ---- slots for the open item ----
@@ -328,21 +330,24 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
     const cnt: Record<string, number> = {};
     // a line in the content calendar for this same campaign must not block its own slot
     const openName = data.campaigns.find((c) => c.id === openId)?.name ?? '';
-    for (const d of data.days) cnt[d.ymd] = d.scheduled.filter((s) => s.id !== openId).length + d.planned.filter((p) => !sameCampaign(openName, p.label)).length;
-    return { today: data.today, windowDays: ws.windowDays, maxPerDay: ws.maxPerDay, counts: cnt, blocked: data.days.filter((d) => d.blocked).map((d) => d.ymd), role };
-  }, [data.days, data.campaigns, data.today, ws.windowDays, ws.maxPerDay, role, openId]);
+    const openItemNow = data.campaigns.find((c) => c.id === openId);
+    for (const d of data.days) cnt[d.ymd] = [...d.scheduled, ...d.requested].filter((x) => x.id !== openId).length + d.planned.filter((p) => !sameCampaign(openName, p.label)).length;
+    const listed = ws.slotMode === 'listed' ? Object.fromEntries(data.days.filter((d) => !d.closed).map((d) => [d.ymd, d.capacity])) : null;
+    return { today: data.today, windowDays: ws.windowDays, maxPerDay: ws.maxPerDay, counts: cnt, blocked: data.days.filter((d) => d.blocked).map((d) => d.ymd), role, listed, offer: openItemNow?.offer ?? null };
+  }, [data.days, data.campaigns, data.today, ws.windowDays, ws.maxPerDay, ws.slotMode, role, openId]);
   const openSet = useMemo(() => new Set(openSlots(slotInput)), [slotInput]);
   const slotDays = useMemo(() => windowDates(data.today, ws.windowDays).filter((d) => isAdmin || d !== data.today), [data.today, ws.windowDays, isAdmin]);
 
   const editHref = (id: string) => (adminBase ? `${adminBase}/campaigns/${id}/edit` : '#');
   const cardOf = (i: BankCampaign) => i.assets[0] ?? null;
 
-  const actions = open ? actionsFor(open.status, role) : [];
+  const actions = open ? actionsFor(open.status, role, data.canDecide) : [];
   const currentPins = open ? open.pins.filter((p) => p.version === open.version) : [];
   const earlierPins = open ? open.pins.filter((p) => p.version !== open.version) : [];
   const openCount = currentPins.filter((p) => p.status === 'open').length;
   const doneCount = currentPins.length - openCount;
   const hasImages = !!open && open.assets.some((as) => as.kind === 'image');
+  const offerLine = (o: NonNullable<BankCampaign['offer']>) => (o.from && o.until ? `${fmtShort(o.from)} to ${fmtShort(o.until)}` : o.until ? `until ${fmtShort(o.until)}` : `from ${fmtShort(o.from!)}`);
 
   // An email is shown at its real width. Exports wider than 900px are treated as 2x and halved.
   const firstImage = open?.assets.find((as) => as.kind === 'image');
@@ -409,33 +414,52 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
             <div className="k">
               {windowLabel}{' '}
               <span id="winsum">
-                {filled} scheduled, {plannedDays > 0 ? `${plannedDays} planned, ` : ''}
+                {filled} scheduled, {requestedDays > 0 ? `${requestedDays} requested, ` : ''}
+                {plannedDays > 0 ? `${plannedDays} planned, ` : ''}
                 {openDays} open
               </span>
             </div>
             <div className="days" id="days" style={ws.windowDays !== 14 ? { gridTemplateColumns: `repeat(${Math.min(ws.windowDays, 14)},1fr)` } : undefined}>
               {data.days.map((d) => {
                 const has = d.scheduled.length > 0;
+                const asked = d.requested.length > 0;
                 const planned = d.planned.length > 0;
                 const plannedNames = d.planned.map((x) => x.label).join(', ');
-                const cls = 'day' + (d.today ? ' today' : '') + (has ? ' has pick' : planned ? ' planned pick' : '') + (d.blocked ? ' blocked' : '');
-                const title = [has ? d.scheduled.map((s) => s.name).join(', ') : '', planned ? `Planned by ECD: ${plannedNames}` : '', d.blocked ? `Blocked: ${d.blocked}` : ''].filter(Boolean).join('. ') || undefined;
-                const click = has ? () => openItem(d.scheduled[0].id) : planned ? () => showToast(`${fmtShort(d.ymd)} is planned: ${plannedNames}`) : undefined;
+                const cls = 'day' + (d.today ? ' today' : '') + (has ? ' has pick' : asked ? ' asked pick' : planned ? ' planned pick' : '') + (d.blocked ? ' blocked' : '') + (d.closed && !d.blocked ? ' closed' : '');
+                const title =
+                  [has ? `Scheduled: ${d.scheduled.map((x) => x.name).join(', ')}` : '', asked ? `Date requested: ${d.requested.map((x) => x.name).join(', ')}` : '', planned ? `Planned by ECD: ${plannedNames}` : '', d.blocked ? `Blocked: ${d.blocked}` : '', d.closed && !d.blocked ? 'Not a send day' : '']
+                    .filter(Boolean)
+                    .join('. ') || undefined;
+                const click = has ? () => openItem(d.scheduled[0].id) : asked ? () => openItem(d.requested[0].id) : planned ? () => showToast(`${fmtShort(d.ymd)} is planned: ${plannedNames}`) : undefined;
+                const chip = (n: number, kind: string) => <span className={'chip' + kind + (n > 1 ? ' two' : '')}>{n > 1 ? `${n} EM` : 'EM'}</span>;
                 return (
-                  <button key={d.ymd} type="button" className={cls} title={title} onClick={click} tabIndex={has || planned ? 0 : -1} aria-label={`${fmtShort(d.ymd)}${title ? `, ${title}` : ''}`} data-planned={planned ? d.planned.length : undefined}>
+                  <button key={d.ymd} type="button" className={cls} title={title} onClick={click} tabIndex={has || asked || planned ? 0 : -1} aria-label={`${fmtShort(d.ymd)}${title ? `, ${title}` : ''}`} data-planned={planned ? d.planned.length : undefined}>
                     <b>{d.day}</b>
                     <span>{d.wd}</span>
-                    {has && <span className={'chip' + (d.scheduled.length > 1 ? ' two' : '')}>{d.scheduled.length > 1 ? `${d.scheduled.length} EM` : 'EM'}</span>}
-                    {planned && <span className={'chip plan' + (d.planned.length > 1 ? ' two' : '')}>{d.planned.length > 1 ? `${d.planned.length} EM` : 'EM'}</span>}
+                    {has && chip(d.scheduled.length, '')}
+                    {asked && chip(d.requested.length, ' ask')}
+                    {planned && chip(d.planned.length, ' plan')}
                   </button>
                 );
               })}
             </div>
             <div className="foot">
               Any open day can take an approved campaign. Pick the slot, we handle the rest.
-              {data.days.some((d) => d.planned.length > 0) && (
+              {data.days.some((d) => d.planned.length + d.requested.length > 0) && (
                 <span className="legend">
-                  <i className="chip" /> scheduled here <i className="chip plan" /> planned by ECD
+                  <i className="chip" /> scheduled
+                  {requestedDays > 0 && (
+                    <>
+                      {' '}
+                      <i className="chip ask" /> date requested
+                    </>
+                  )}
+                  {plannedDays > 0 && (
+                    <>
+                      {' '}
+                      <i className="chip plan" /> planned by ECD
+                    </>
+                  )}
                 </span>
               )}
             </div>
@@ -457,7 +481,7 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
           <button type="button" className={'f bank' + (filter === 'bank' ? ' on' : '')} onClick={() => setFilter('bank')}>
             Bank <span className="n">{a + h}</span>
           </button>
-          {ORDER.map((s) => (
+          {ORDER.filter((s) => s !== 'draft' || ws.showsDrafts).map((s) => (
             <button key={s} type="button" className={'f ' + s + (filter === s ? ' on' : '')} onClick={() => setFilter(s)}>
               {STATUS[s]} <span className="n">{counts[s] ?? 0}</span>
             </button>
@@ -498,6 +522,11 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                     <div className="gph pdfph">
                       <PdfIcon />
                       <span>PDF</span>
+                    </div>
+                  ) : first?.kind === 'sms' ? (
+                    <div className="smscard">
+                      <span className="tag">SMS</span>
+                      <div className="bubble">{first.text}</div>
                     </div>
                   ) : (
                     <div className="gph">
@@ -547,7 +576,7 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                       <img src={first.thumbUrl} alt="" />
                     </div>
                   ) : (
-                    <div className="th none">{first?.kind === 'pdf' ? 'PDF' : i.name[0]}</div>
+                    <div className="th none">{first?.kind === 'pdf' ? 'PDF' : first?.kind === 'sms' ? 'SMS' : i.name[0]}</div>
                   )}
                   <div className="t">
                     <b>{i.name}</b>
@@ -639,6 +668,14 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                     onResolve={resolvePin}
                     onDelete={deletePin}
                   />
+                ) : as.kind === 'sms' ? (
+                  <div key={as.id} className="phone" data-testid="sms-preview">
+                    <div className="from">{ws.name}</div>
+                    <div className="bubble">{as.text}</div>
+                    <div className="count">
+                      {(as.text ?? '').length} characters, {Math.max(1, Math.ceil((as.text ?? '').length / 160))} message{(as.text ?? '').length > 160 ? 's' : ''}
+                    </div>
+                  </div>
                 ) : (
                   <a key={as.id} className="pdfcard" href={as.url} target="_blank" rel="noreferrer">
                     {as.thumbUrl ? <img src={as.thumbUrl} alt="" style={{ boxShadow: 'none', borderRadius: 8 }} /> : <PdfIcon />}
@@ -683,10 +720,50 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                 <b>{open.built}</b>
                 <span>Last update</span>
                 <b>{open.since}</b>
+                {open.channel === 'sms' && (
+                  <>
+                    <span>Channel</span>
+                    <b>SMS</b>
+                  </>
+                )}
+                {open.approval && (
+                  <>
+                    <span>Approved</span>
+                    <b id="approval">
+                      version {open.approval.version} by {open.approval.by}, {open.approval.on}
+                    </b>
+                  </>
+                )}
+                {open.offer && (
+                  <>
+                    <span>Offer runs</span>
+                    <b id="offer">{offerLine(open.offer)}</b>
+                  </>
+                )}
+                {open.scheduled && open.status === 'requested' && (
+                  <>
+                    <span>Requested date</span>
+                    <b>{fmtShort(open.scheduled)}</b>
+                  </>
+                )}
                 {open.scheduled && open.status === 'scheduled' && (
                   <>
                     <span>Send date</span>
                     <b className={open.late ? 'late' : ''}>{fmtShort(open.scheduled)}</b>
+                  </>
+                )}
+                {open.asana && (
+                  <>
+                    <span>Asana</span>
+                    <b>
+                      {open.asana.url ? (
+                        <a className="link" href={open.asana.url} target="_blank" rel="noreferrer">
+                          {open.asana.stage ?? 'Open the task'}
+                        </a>
+                      ) : (
+                        (open.asana.stage ?? 'Linked')
+                      )}
+                    </b>
                   </>
                 )}
                 {open.sent && open.status === 'sent' && (
@@ -753,6 +830,10 @@ export function Bank({ initial, adminBase }: { initial: BankPayload; adminBase?:
                     <small>no actions</small>
                   </button>
                 )}
+                {!isAdmin && !data.canDecide && open.status !== 'sent' && <div className="hintline" id="commenter">{COMMENTER_ONLY}</div>}
+                {!isAdmin && data.canDecide && open.status === 'scheduled' && <div className="hintline">ECD scheduled this one. Leave a note if the date needs to move.</div>}
+                {!isAdmin && data.canDecide && open.status === 'requested' && <div className="hintline">ECD will confirm the date. It shows as Scheduled once it is set.</div>}
+                {!isAdmin && data.canDecide && open.status === 'changes' && <div className="hintline">ECD is working on your changes. A new version comes back here for review.</div>}
                 {adminBase && (
                   <a className="b ghost" href={editHref(open.id)}>
                     <span>Edit</span>

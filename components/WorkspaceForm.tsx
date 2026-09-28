@@ -12,6 +12,8 @@ export interface WorkspaceInput {
   maxPerDay: number;
   brandColor: string;
   logoUrl: string | null;
+  clientSeesDrafts: boolean;
+  slotMode: string;
 }
 
 export function WorkspaceForm({ initial }: { initial: WorkspaceInput }) {
@@ -26,7 +28,7 @@ export function WorkspaceForm({ initial }: { initial: WorkspaceInput }) {
   async function save() {
     setBusy(true);
     setMsg(null);
-    const body = { name: f.name, slug: f.slug, timezone: f.timezone, windowDays: f.windowDays, maxPerDay: f.maxPerDay, brandColor: f.brandColor };
+    const body = { name: f.name, slug: f.slug, timezone: f.timezone, windowDays: f.windowDays, maxPerDay: f.maxPerDay, brandColor: f.brandColor, clientSeesDrafts: f.clientSeesDrafts, slotMode: f.slotMode };
     const r = isNew ? await api<{ slug: string }>('/api/admin/workspaces', { body }) : await api<{ slug: string }>(`/api/admin/workspaces/${initial.id}`, { method: 'PATCH', body });
     setBusy(false);
     if (!r.ok) return setMsg({ kind: 'err', text: r.error });
@@ -79,6 +81,18 @@ export function WorkspaceForm({ initial }: { initial: WorkspaceInput }) {
       <label>
         <b>Brand color, optional</b>
         <input type="text" value={f.brandColor} onChange={(e) => set('brandColor', e.target.value)} placeholder="#2f5d3a" />
+      </label>
+      <label>
+        <b>Send days</b>
+        <select value={f.slotMode} onChange={(e) => set('slotMode', e.target.value)} data-testid="slot-mode">
+          <option value="open">Every day is open unless blocked</option>
+          <option value="listed">Only the days ECD opens</option>
+        </select>
+        <span className="small">With listed days the client can only ask for days ECD made available, so capacity follows cadence and deliverability.</span>
+      </label>
+      <label className="inline" style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <input type="checkbox" checked={f.clientSeesDrafts} onChange={(e) => set('clientSeesDrafts', e.target.checked)} style={{ width: 'auto', flex: 'none' }} data-testid="client-sees-drafts" />
+        <span>Clients can see drafts. Off by default: clients see In review onward, plus On hold.</span>
       </label>
       {!isNew && (
         <div className="inline">

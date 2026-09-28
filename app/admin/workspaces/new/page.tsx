@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth';
+import { requireFullAdmin as requireAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/AdminNav';
 import { WorkspaceForm } from '@/components/WorkspaceForm';
 
@@ -15,7 +15,7 @@ export default async function NewWorkspacePage() {
           <p>One per client. You can add reviewers and the logo after it exists.</p>
         </div>
       </div>
-      <WorkspaceForm initial={{ name: '', slug: '', timezone: 'America/Chicago', windowDays: 14, maxPerDay: 1, brandColor: '', logoUrl: null }} />
+      <WorkspaceForm initial={{ name: '', slug: '', timezone: 'America/Chicago', windowDays: 14, maxPerDay: 1, brandColor: '', logoUrl: null, clientSeesDrafts: false, slotMode: 'open' }} />
     </div>
   );
 }

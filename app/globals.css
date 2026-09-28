@@ -417,3 +417,34 @@ a{color:inherit}
 @media (max-width:700px){.fgroup{grid-template-columns:1fr}}
 .sticky-bar{position:sticky;bottom:0;background:var(--canvas);border-top:1px solid var(--line);padding:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:3}
 .sample{font-size:12.5px;color:var(--amber-ink);background:var(--amber);border-radius:8px;padding:7px 10px}
+
+/* ---------------------------------------------------------------------------
+   Changes requested, date requested, listed send days, SMS, approval record
+   --------------------------------------------------------------------------- */
+.pill.changes{background:var(--red);color:var(--red-ink)}
+.pill.requested{background:oklch(95% 0.04 275);color:var(--purple-ink);border:1px dashed oklch(70% 0.12 275)}
+.f.changes:not(.on) .n{background:var(--red);color:var(--red-ink)}
+.day.asked{border-style:dashed;border-color:oklch(70% 0.12 275);background:var(--purple-soft)}
+.day .chip.ask{background:transparent;color:var(--purple-ink);border:1.5px dashed var(--purple)}
+.window .foot .legend i.chip.ask{background:transparent;border:1.5px dashed var(--purple)}
+.day.closed{border-color:transparent;background:transparent;opacity:.45}
+.day.closed b{color:var(--faint)}
+.hintline{font-size:12.5px;color:var(--muted);background:var(--gray);border-radius:10px;padding:9px 12px;line-height:1.4}
+.side .meta b a{font-weight:600}
+.smscard{aspect-ratio:1/1.1;padding:34px 16px 16px;background:linear-gradient(180deg,#FBFAF8,#F3F1EC);display:flex;flex-direction:column;justify-content:flex-start;position:relative;text-align:left}
+.smscard .tag{position:absolute;top:10px;right:10px;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.bubble{background:#fff;border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:10px 13px;font-size:13px;line-height:1.4;color:var(--ink);white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.smscard .bubble{display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.phone{width:100%;max-width:360px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:28px;padding:22px 18px 26px;box-shadow:0 8px 30px oklch(20% 0.01 80 / .12);display:flex;flex-direction:column;gap:12px}
+.phone .from{text-align:center;font-size:12px;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--line)}
+.phone .bubble{background:var(--gray);border:0;font-size:15px;box-shadow:none;align-self:flex-start;max-width:92%}
+.phone .count{font-size:11.5px;color:var(--faint);text-align:center}
+.weekdays{display:flex;gap:6px;flex-wrap:wrap}
+.weekdays label{flex-direction:row;align-items:center;gap:5px;border:1px solid var(--line-2);border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--ink);cursor:pointer}
+.weekdays label.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.weekdays input{display:none}
+.stagemap{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+@media (max-width:700px){.stagemap{grid-template-columns:1fr}}
+.stagemap label span{font-size:11.5px;color:var(--faint)}
+.insights{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:900px){.insights{grid-template-columns:repeat(2,1fr)}}

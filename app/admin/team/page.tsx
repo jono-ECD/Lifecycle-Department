@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { requireFullAdmin as requireAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/AdminNav';
 import { TeamForm } from '@/components/TeamForm';
 
@@ -26,6 +26,7 @@ export default async function TeamPage() {
                 <tr key={a.id}>
                   <td>{a.name}</td>
                   <td className="muted">{a.email}</td>
+                  <td className="muted">{a.role === 'admin' ? 'Admin' : 'Editor'}</td>
                 </tr>
               ))}
             </tbody>

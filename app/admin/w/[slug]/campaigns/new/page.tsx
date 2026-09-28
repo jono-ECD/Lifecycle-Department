@@ -22,7 +22,7 @@ export default async function NewCampaignPage({ params }: { params: Promise<{ sl
           <p>Upload the finished design and set the status. Drafts stay with ECD until you move them to review.</p>
         </div>
       </div>
-      <CampaignEditor workspaceId={ws.id} base={`/admin/w/${ws.slug}`} campaign={null} today={todayYmd(ws.timezone)} figmaEnabled={envStatus().figmaToken} />
+      <CampaignEditor workspaceId={ws.id} base={`/admin/w/${ws.slug}`} campaign={null} today={todayYmd(ws.timezone)} figmaEnabled={envStatus().figmaToken} canDelete={false} />
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { requireFullAdmin as requireAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/AdminNav';
 import { IntegrationsPanel } from '@/components/IntegrationsPanel';
 import { envStatus } from '@/lib/integrations/env';
 import { env } from '@/lib/env';
 import { fmtStamp } from '@/lib/dates';
+import { parseStageMap } from '@/lib/integrations/asanaStage';
+import { feedUrl } from '@/lib/integrations/sheetTab';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +16,7 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const ws = await db.workspace.findUnique({ where: { slug }, include: { integration: true } });
   if (!ws) notFound();
-  const events = await db.integrationEvent.findMany({ where: { workspaceId: ws.id }, orderBy: { createdAt: 'desc' }, take: 40 });
+  const events = await db.integrationEvent.findMany({ where: { workspaceId: ws.id }, orderBy: { createdAt: 'desc' }, take: 60 });
   const names = new Map((await db.campaign.findMany({ where: { workspaceId: ws.id }, select: { id: true, name: true } })).map((c) => [c.id, c.name]));
   const cfg = ws.integration;
   const sampleOn = env('ENABLE_DEV_MOCKS') === '1';
@@ -39,6 +41,12 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ s
           klaviyoHint: cfg?.klaviyoKeyHint ?? null,
           klaviyoSyncedOn: cfg?.klaviyoSyncedAt ? fmtStamp(cfg.klaviyoSyncedAt, ws.timezone) : null,
           klaviyoError: cfg?.klaviyoError ?? null,
+          asanaPulledOn: cfg?.asanaPulledAt ? fmtStamp(cfg.asanaPulledAt, ws.timezone) : null,
+          asanaPullError: cfg?.asanaPullError ?? null,
+          feedUrl: cfg?.feedToken ? feedUrl(cfg.feedToken) : null,
+          sheetPushedOn: cfg?.sheetPushedAt ? fmtStamp(cfg.sheetPushedAt, ws.timezone) : null,
+          sheetPushError: cfg?.sheetPushError ?? null,
+          googleReady: !!env('GOOGLE_SERVICE_ACCOUNT_JSON'),
         }}
         initial={{
           slackWebhookUrl: cfg?.slackWebhookUrl ?? '',
@@ -55,6 +63,11 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ s
           sheetFilterColumn: cfg?.sheetFilterColumn ?? '',
           sheetFilterValue: cfg?.sheetFilterValue ?? '',
           klaviyoKey: '',
+          asanaStageFieldGid: cfg?.asanaStageFieldGid ?? '',
+          asanaStageMap: parseStageMap(cfg?.asanaStageMap) as Record<string, string>,
+          googleSheetId: cfg?.googleSheetId ?? '',
+          googleSheetTab: cfg?.googleSheetTab ?? '',
+          feed: 'keep',
         }}
         events={events.map((e) => ({ id: e.id, type: e.type, target: e.target, status: e.status, error: e.error, result: e.result, attempts: e.attempts, when: fmtStamp(e.createdAt, ws.timezone), campaign: e.campaignId ? (names.get(e.campaignId) ?? null) : null }))}
       />

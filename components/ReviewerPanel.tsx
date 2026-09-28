@@ -11,12 +11,14 @@ export interface ReviewerRow {
   hasPin: boolean;
   lastSeen: string | null;
   revoked: boolean;
+  canApprove: boolean;
 }
 
 export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; initial: ReviewerRow[] }) {
   const [rows, setRows] = useState(initial);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [canApprove, setCanApprove] = useState(true);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [link, setLink] = useState<{ id: string; url: string; qr: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,16 +31,16 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
   async function create() {
     setBusy(true);
     setMsg(null);
-    const r = await api<{ id: string; link: string }>('/api/admin/reviewers', { body: { workspaceId, name, email } });
+    const r = await api<{ id: string; link: string }>('/api/admin/reviewers', { body: { workspaceId, name, email, canApprove } });
     setBusy(false);
     if (!r.ok) return setMsg({ kind: 'err', text: r.error });
-    setRows((x) => [...x, { id: r.data.id, name, email, hasPin: false, lastSeen: null, revoked: false }]);
+    setRows((x) => [...x, { id: r.data.id, name, email, hasPin: false, lastSeen: null, revoked: false, canApprove }]);
     setName('');
     setEmail('');
     await showLink(r.data.id, r.data.link);
   }
 
-  async function op(id: string, body: { op: 'revoke' | 'regenerate' | 'link' | 'clear_pin' } | { op: 'set_pin'; pin: string }) {
+  async function op(id: string, body: { op: 'revoke' | 'regenerate' | 'link' | 'clear_pin' } | { op: 'set_pin'; pin: string } | { op: 'set_approver'; canApprove: boolean }) {
     setBusy(true);
     setMsg(null);
     const r = await api<{ link?: string }>(`/api/admin/reviewers/${id}`, { body });
@@ -55,6 +57,7 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
     }
     if (body.op === 'set_pin') setRows((x) => x.map((row) => (row.id === id ? { ...row, hasPin: true } : row)));
     if (body.op === 'clear_pin') setRows((x) => x.map((row) => (row.id === id ? { ...row, hasPin: false } : row)));
+    if (body.op === 'set_approver') setRows((x) => x.map((row) => (row.id === id ? { ...row, canApprove: body.canApprove } : row)));
   }
 
   async function copy(text: string) {
@@ -77,7 +80,7 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
       <div className="k">Reviewer links</div>
       <h3>Who reviews this bank</h3>
       <p className="small" style={{ margin: 0 }}>
-        Each reviewer gets a personal link. It signs them in for 90 days on that device. The personal link is shown once, right after it is created. Copy link gives a 45 day link and a QR code for an existing reviewer.
+        Each reviewer gets a personal link. It signs them in for 90 days on that device. The personal link is shown once, right after it is created. Copy link gives a 45 day link and a QR code for an existing reviewer. Approvers decide; commenters see everything and leave notes.
       </p>
       {msg && <div className={msg.kind}>{msg.text}</div>}
       {link && (
@@ -113,6 +116,12 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
                 {r.name}
                 {r.revoked && <span className="pill sent" style={{ marginLeft: 6 }}>Revoked</span>}
                 {r.hasPin && <span className="pill hold" style={{ marginLeft: 6 }}>PIN</span>}
+                <div style={{ marginTop: 4 }}>
+                  <select value={r.canApprove ? 'approver' : 'commenter'} onChange={(e) => op(r.id, { op: 'set_approver', canApprove: e.target.value === 'approver' })} disabled={busy} aria-label={`Role of ${r.name}`} data-testid="reviewer-role" style={{ font: 'inherit', fontSize: 12, border: '1px solid var(--line-2)', borderRadius: 8, padding: '3px 6px', background: 'var(--card)' }}>
+                    <option value="approver">Approver</option>
+                    <option value="commenter">Commenter</option>
+                  </select>
+                </div>
               </td>
               <td>{r.email}</td>
               <td className="muted">{r.lastSeen ?? 'never'}</td>
@@ -156,6 +165,10 @@ export function ReviewerPanel({ workspaceId, initial }: { workspaceId: string; i
       <div className="inline">
         <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <select value={canApprove ? 'approver' : 'commenter'} onChange={(e) => setCanApprove(e.target.value === 'approver')} aria-label="Role" style={{ flex: 'none', width: 'auto' }}>
+          <option value="approver">Approver</option>
+          <option value="commenter">Commenter</option>
+        </select>
         <button className="btn primary" type="button" disabled={busy || !name || !email} onClick={create}>
           Create link
         </button>

@@ -4,6 +4,7 @@
 // Plus the delivery log.
 import { useState } from 'react';
 import { api } from '@/lib/client';
+import { STAGE_KEYS, STAGE_LABELS, type AsanaEnumField, type StageMap } from '@/lib/integrations/asanaStage';
 
 export interface IntegrationConfig {
   slackWebhookUrl: string;
@@ -20,6 +21,11 @@ export interface IntegrationConfig {
   sheetFilterColumn: string;
   sheetFilterValue: string;
   klaviyoKey: string;
+  asanaStageFieldGid: string;
+  asanaStageMap: Record<string, string>;
+  googleSheetId: string;
+  googleSheetTab: string;
+  feed: 'keep' | 'create' | 'remove';
 }
 
 export interface SyncStatus {
@@ -30,6 +36,12 @@ export interface SyncStatus {
   klaviyoHint: string | null;
   klaviyoSyncedOn: string | null;
   klaviyoError: string | null;
+  asanaPulledOn: string | null;
+  asanaPullError: string | null;
+  feedUrl: string | null;
+  sheetPushedOn: string | null;
+  sheetPushError: string | null;
+  googleReady: boolean;
 }
 
 export interface EventRow {
@@ -45,7 +57,7 @@ export interface EventRow {
 }
 
 type Target = 'slack' | 'asana' | 'figma' | 'webhook';
-type SyncTarget = 'sheet' | 'klaviyo';
+type SyncTarget = 'sheet' | 'klaviyo' | 'asana' | 'asana_fields' | 'sheet_tab';
 type Note = { kind: 'ok' | 'err'; text: string };
 
 export function IntegrationsPanel({ workspaceId, initial, env, status: initialStatus, events: initialEvents, sample }: { workspaceId: string; initial: IntegrationConfig; env: { asanaToken: boolean; figmaToken: boolean; resend: boolean }; status: SyncStatus; events: EventRow[]; sample: { sheetUrl: string } | null }) {
@@ -56,6 +68,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
   const [msg, setMsg] = useState<Note | null>(null);
   const [testMsg, setTestMsg] = useState<Partial<Record<Target | SyncTarget, Note>>>({});
   const [preview, setPreview] = useState<{ date: string; label: string }[]>([]);
+  const [fields, setFields] = useState<AsanaEnumField[]>([]);
   const [busy, setBusy] = useState(false);
 
   const set = <K extends keyof IntegrationConfig>(k: K, v: IntegrationConfig[K]) => setF((s) => ({ ...s, [k]: v }));
@@ -64,16 +77,16 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
   async function save(): Promise<boolean> {
     setBusy(true);
     setMsg(null);
-    const r = await api<{ config: { klaviyoConnected: boolean; klaviyoKeyHint: string | null } }>(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: f });
+    const r = await api<{ config: { klaviyoConnected: boolean; klaviyoKeyHint: string | null; feedUrl: string | null } }>(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: f });
     setBusy(false);
     if (!r.ok) {
       setMsg({ kind: 'err', text: r.error });
       return false;
     }
-    const next = { ...f, klaviyoKey: '' };
+    const next = { ...f, klaviyoKey: '', feed: 'keep' as const };
     setF(next);
     setSaved(next);
-    setStatus((s) => ({ ...s, klaviyoConnected: r.data.config.klaviyoConnected, klaviyoHint: r.data.config.klaviyoKeyHint }));
+    setStatus((s) => ({ ...s, klaviyoConnected: r.data.config.klaviyoConnected, klaviyoHint: r.data.config.klaviyoKeyHint, feedUrl: r.data.config.feedUrl }));
     setMsg({ kind: 'ok', text: 'Saved.' });
     return true;
   }
@@ -89,13 +102,21 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
   async function sync(target: SyncTarget) {
     setBusy(true);
     setTestMsg((t) => ({ ...t, [target]: undefined }));
-    const r = await api<{ message: string; preview?: { date: string; label: string }[] }>(`/api/admin/integrations/${workspaceId}/sync`, { body: { target } });
+    const r = await api<{ message: string; preview?: { date: string; label: string }[]; fields?: AsanaEnumField[]; guess?: { fieldGid: string; map: StageMap } | null }>(`/api/admin/integrations/${workspaceId}/sync`, { body: { target } });
     setBusy(false);
     setTestMsg((t) => ({ ...t, [target]: r.ok ? { kind: 'ok', text: r.data.message } : { kind: 'err', text: r.error } }));
+    if (target === 'asana_fields' && r.ok) {
+      setFields(r.data.fields ?? []);
+      // a first guess from the option names, for ECD to confirm; what is stored is the ids
+      const g = r.data.guess;
+      if (g && !f.asanaStageFieldGid) setF((cur) => ({ ...cur, asanaStageFieldGid: g.fieldGid, asanaStageMap: { ...(g.map as Record<string, string>), ...cur.asanaStageMap } }));
+    }
+    if (target === 'asana') setStatus((cur) => ({ ...cur, asanaPullError: r.ok ? null : r.error, asanaPulledOn: 'just now' }));
+    if (target === 'sheet_tab') setStatus((cur) => ({ ...cur, sheetPushError: r.ok ? null : r.error, sheetPushedOn: 'just now' }));
     if (target === 'sheet') {
       setPreview(r.ok ? (r.data.preview ?? []) : []);
       setStatus((s) => ({ ...s, sheetError: r.ok ? null : r.error, sheetSyncedOn: 'just now' }));
-    } else setStatus((s) => ({ ...s, klaviyoError: r.ok ? null : r.error, klaviyoSyncedOn: 'just now' }));
+    } else if (target === 'klaviyo') setStatus((s) => ({ ...s, klaviyoError: r.ok ? null : r.error, klaviyoSyncedOn: 'just now' }));
   }
 
   async function removeKlaviyo() {
@@ -107,6 +128,28 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
     setStatus((s) => ({ ...s, klaviyoConnected: false, klaviyoHint: null, klaviyoError: null, klaviyoSyncedOn: null }));
     setMsg({ kind: 'ok', text: 'Klaviyo disconnected.' });
   }
+
+  async function feed(action: 'create' | 'remove') {
+    if (action === 'remove' && !window.confirm('Turn the feed off? Any sheet importing it stops updating.')) return;
+    setBusy(true);
+    const r = await api<{ config: { feedUrl: string | null } }>(`/api/admin/integrations/${workspaceId}`, { method: 'PATCH', body: { ...saved, klaviyoKey: '', feed: action } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ kind: 'err', text: r.error });
+    setStatus((cur) => ({ ...cur, feedUrl: r.data.config.feedUrl }));
+  }
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMsg({ kind: 'ok', text: 'Copied.' });
+    } catch {
+      setMsg({ kind: 'err', text: 'Copy failed. Select the text and copy it by hand.' });
+    }
+  }
+
+  const stageField = fields.find((x) => x.gid === f.asanaStageFieldGid);
+  const problems = events.filter((e) => e.type === 'sync_error' && e.status === 'failed');
+  const deliveries = events.filter((e) => e.type !== 'sync_error');
 
   async function retry(id: string) {
     setBusy(true);
@@ -153,11 +196,11 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
       <div className="panel" data-conn="asana">
         <div className="k">Asana</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
-          <h3>Tasks for edits</h3>
+          <h3>Campaigns and feedback</h3>
           <Status on={!!saved.asanaProjectGid && env.asanaToken} label="Connected" warn={saved.asanaProjectGid && !env.asanaToken ? 'Token missing' : undefined} />
         </div>
         <p className="small" style={{ margin: 0 }}>
-          A change request or a pinned note from the client becomes a task in this project, with the words of the client first, the crop attached, and a link back. Replies become task comments; marking a note done completes the task. The agency token is <code>ASANA_ACCESS_TOKEN</code> in the environment{env.asanaToken ? ' (set)' : ' (not set yet)'}.
+          Client decisions and notes go onto the campaign&apos;s own Asana task as a comment that reads &quot;Name via Campaign Bank&quot;, with their words verbatim, and Stage moves with the decision. A note pinned on the design becomes a subtask with the crop attached; marking it done completes the subtask. A campaign with no Asana task gets a new task in this project instead. The agency token is <code>ASANA_ACCESS_TOKEN</code> in the environment{env.asanaToken ? ' (set)' : ' (not set yet)'}. A dedicated bot user keeps the comments clearly attributed.
         </p>
         <div className="form">
           <div className="row2">
@@ -175,12 +218,81 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
             <input type="email" value={f.asanaAssigneeEmail} onChange={(e) => set('asanaAssigneeEmail', e.target.value)} placeholder="designer@ecdigitalstrategy.com" />
           </label>
         </div>
+        <div className="form" style={{ maxWidth: 'none' }}>
+          <div className="small">
+            <b>Campaigns come from Asana.</b> Each task in the section above becomes a campaign, keyed on the task id. The Bank reads the name, due date, Stage, and the Design: and Klaviyo: lines of the task notes every five minutes. Asana stays the place where work moves.
+          </div>
+          <div className="inline">
+            <button className="btn sm" type="button" disabled={busy || !saved.asanaProjectGid || dirty} onClick={() => sync('asana_fields')} data-testid="asana-fields">
+              Load the Stage fields
+            </button>
+            <Result t="asana_fields" />
+          </div>
+          {(fields.length > 0 || f.asanaStageFieldGid) && (
+            <>
+              <label>
+                <b>Stage field, bound by id</b>
+                {fields.length > 0 ? (
+                  <select value={f.asanaStageFieldGid} onChange={(e) => setF((cur) => ({ ...cur, asanaStageFieldGid: e.target.value, asanaStageMap: {} }))} data-testid="asana-stage-field">
+                    <option value="">Pick the field</option>
+                    {fields.map((x) => (
+                      <option key={x.gid} value={x.gid}>
+                        {x.name} (id {x.gid}, {x.options.length} options)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={f.asanaStageFieldGid} readOnly />
+                )}
+              </label>
+              <div className="stagemap" data-testid="asana-stage-map">
+                {STAGE_KEYS.map((k) => (
+                  <label key={k}>
+                    <b>
+                      {STAGE_LABELS[k].direction === 'in' ? 'Reads' : 'Writes'}: {STAGE_LABELS[k].label}
+                    </b>
+                    {stageField ? (
+                      <select value={f.asanaStageMap[k] ?? ''} onChange={(e) => setF((cur) => ({ ...cur, asanaStageMap: { ...cur.asanaStageMap, [k]: e.target.value } }))}>
+                        <option value="">Not used</option>
+                        {stageField.options.map((o) => (
+                          <option key={o.gid} value={o.gid}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" value={f.asanaStageMap[k] ?? ''} readOnly placeholder="Load the fields to choose" />
+                    )}
+                    <span>{STAGE_LABELS[k].hint}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {status.asanaPullError && <div className="err">{status.asanaPullError}</div>}
         <div className="inline">
           <button className="btn sm" type="button" disabled={busy || !saved.asanaProjectGid || dirty} onClick={() => test('asana')}>
             Check the connection
           </button>
+          <button className="btn sm" type="button" disabled={busy || !saved.asanaProjectGid || dirty} onClick={() => sync('asana')} data-testid="asana-pull">
+            Pull from Asana now
+          </button>
+          {status.asanaPulledOn && <span className="small">Last pull {status.asanaPulledOn}.</span>}
           <Result t="asana" />
         </div>
+        {problems.length > 0 && (
+          <div data-testid="sync-problems">
+            <div className="small" style={{ marginBottom: 6 }}>
+              <b>Needs a look in Asana.</b> The Bank left these alone instead of guessing. Each clears on its own once the task is fixed.
+            </div>
+            {problems.map((p) => (
+              <div key={p.id} className="flag" style={{ marginBottom: 6 }}>
+                {p.error}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="panel" data-conn="figma">
@@ -303,6 +415,65 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
         )}
       </div>
 
+      <div className="panel" data-conn="tab">
+        <div className="k">Scheduler sheet</div>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h3>The Campaign Bank tab</h3>
+          <Status on={!!status.feedUrl || (!!saved.googleSheetId && status.googleReady)} label="Connected" warn={status.sheetPushError ? 'Needs attention' : undefined} />
+        </div>
+        <p className="small" style={{ margin: 0 }}>
+          The Bank keeps its own tab and never touches the calendar grid, so inserting a row in the grid cannot break anything. One row per campaign, keyed on the Asana task id: status, approved version and by whom, requested or scheduled date, offer window. The grid can look values up from it.
+        </p>
+        <div className="form" style={{ maxWidth: 'none' }}>
+          <div className="small">
+            <b>Without any Google account.</b> Create a feed link, add a tab named Campaign Bank to the sheet, and paste the formula in cell A1. Google refreshes it about once an hour.
+          </div>
+          {status.feedUrl ? (
+            <>
+              <code style={{ display: 'block', wordBreak: 'break-all' }} data-testid="feed-formula">{`=IMPORTDATA("${status.feedUrl}")`}</code>
+              <div className="inline">
+                <button className="btn sm" type="button" onClick={() => copy(`=IMPORTDATA("${status.feedUrl}")`)}>
+                  Copy the formula
+                </button>
+                <a className="btn sm" href={status.feedUrl} target="_blank" rel="noreferrer">
+                  Open the feed
+                </a>
+                <button className="btn sm danger" type="button" disabled={busy} onClick={() => feed('remove')}>
+                  Turn the feed off
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="inline">
+              <button className="btn sm" type="button" disabled={busy || dirty} onClick={() => feed('create')} data-testid="feed-create">
+                Create the feed link
+              </button>
+            </div>
+          )}
+          <div className="small" style={{ marginTop: 6 }}>
+            <b>Within a minute of every change.</b> Share the sheet with a Google service account as an editor and put its key in <code>GOOGLE_SERVICE_ACCOUNT_JSON</code>{status.googleReady ? ' (set)' : ' (not set yet)'}. The Bank then rewrites the whole tab after each change.
+          </div>
+          <div className="row2">
+            <label>
+              <b>Sheet id</b>
+              <input type="text" value={f.googleSheetId} onChange={(e) => set('googleSheetId', e.target.value)} placeholder="the long part of the sheet URL after /d/" />
+            </label>
+            <label>
+              <b>Tab name</b>
+              <input type="text" value={f.googleSheetTab} onChange={(e) => set('googleSheetTab', e.target.value)} placeholder="Campaign Bank" />
+            </label>
+          </div>
+        </div>
+        {status.sheetPushError && <div className="err">{status.sheetPushError}</div>}
+        <div className="inline">
+          <button className="btn sm" type="button" disabled={busy || !saved.googleSheetId || !status.googleReady || dirty} onClick={() => sync('sheet_tab')}>
+            Rewrite the tab now
+          </button>
+          {status.sheetPushedOn && <span className="small">Last written {status.sheetPushedOn}.</span>}
+          <Result t="sheet_tab" />
+        </div>
+      </div>
+
       <div className="panel" data-conn="webhook">
         <div className="k">Webhook</div>
         <div className="inline" style={{ justifyContent: 'space-between' }}>
@@ -342,7 +513,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
       <div className="panel">
         <div className="k">Deliveries</div>
         <h3>What went out</h3>
-        {events.length === 0 ? (
+        {deliveries.length === 0 ? (
           <div className="small">Nothing yet. Deliveries appear here once a connection is saved and something happens in the bank.</div>
         ) : (
           <table className="tbl evlog">
@@ -356,7 +527,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
               </tr>
             </thead>
             <tbody>
-              {events.map((e) => (
+              {deliveries.map((e) => (
                 <tr key={e.id}>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>
                     {e.when}
@@ -367,7 +538,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
                   </td>
                   <td>{e.target}</td>
                   <td>
-                    <span className={'status ' + (e.status === 'sent' ? 'ok' : e.status === 'failed' ? 'warn' : 'off')}>{e.status}</span>
+                    <span className={'status ' + (e.status === 'sent' ? 'ok' : e.status === 'failed' || e.status === 'dead' ? 'warn' : 'off')}>{e.status === 'dead' ? 'gave up' : e.status}</span>
                     {e.error && (
                       <div className="err" style={{ marginTop: 4 }}>
                         {e.error}

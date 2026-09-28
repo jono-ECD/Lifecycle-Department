@@ -37,7 +37,7 @@ test('import from Figma: pick frames, combine EM1 and EM2, and they arrive as ca
   expect(Math.round((await imgs.first().boundingBox())!.width)).toBe(600);
   await expect(page.locator('#dpill')).toHaveText('Draft');
   await expect(page.locator('#dmeta')).toContainText('Open in Figma');
-  await expect(page.locator('#thread .msg').last()).toContainText('Design uploaded, 2 files.');
+  await expect(page.locator('#thread .msg').last()).toContainText('Design uploaded from Figma, 2 files.');
   await shot(page, 'admin-figma-imported-drawer-1280.png');
 
   const c = await db().campaign.findFirstOrThrow({ where: { name: 'October Promo' }, include: { assets: true } });
@@ -53,12 +53,18 @@ test('import from Figma: pick frames, combine EM1 and EM2, and they arrive as ca
   await expect(page.locator('[data-testid=figma-frame] .was')).toHaveCount(3);
 });
 
-test('pull the latest from Figma creates the next version', async ({ page }) => {
+test('pull the latest from Figma skips an unchanged frame and versions a changed one', async ({ page }) => {
   await adminLogin(page);
   const c = await db().campaign.findFirstOrThrow({ where: { name: 'Sea Moss Spotlight' } });
   await page.goto(`/admin/w/blessed-botanicals/campaigns/${c.id}/edit`);
   await hydrated(page);
   await expect(page.locator('.page-h p')).toContainText('Version 1.');
+  await page.click('button:has-text("Pull the latest from Figma")');
+  await expect(page.locator('.form > .ok').first()).toHaveText('Nothing changed in Figma since the last version.');
+  expect((await db().campaign.findUniqueOrThrow({ where: { id: c.id } })).currentVersion).toBe(1);
+
+  // the designer edits the frame
+  expect((await page.request.get('/api/dev/mock/figma/_bump')).ok()).toBeTruthy();
   await page.click('button:has-text("Pull the latest from Figma")');
   await page.waitForURL(/saved=1/, { timeout: 60_000 });
   await expect(page.locator('.page-h p')).toContainText('Version 2.');
@@ -93,12 +99,12 @@ test('content calendar: the sheet marks days on the calendar and those days cann
   await expect(page.locator('#toast')).toContainText('is planned: Sea Moss Spotlight');
 
   await openCard(page, 'Born For Us, Made For You');
-  await page.locator('.b:has-text("Schedule")').click();
+  await page.locator('.b:has-text("Request a send date")').click();
   const taken = await page.locator('.slot:disabled').count();
   // two scheduled campaigns, three planned days, plus any day blocked by an earlier test
   expect(taken).toBeGreaterThanOrEqual(5);
   const plannedDay = (await db().scheduleItem.findFirstOrThrow({ where: { label: 'Sea Moss Spotlight' } })).date.toISOString().slice(0, 10);
-  const r = await page.request.post(`/api/campaigns/${(await db().campaign.findFirstOrThrow({ where: { name: 'Born For Us, Made For You' } })).id}/transition`, { data: { action: 'schedule', date: plannedDay } });
+  const r = await page.request.post(`/api/campaigns/${(await db().campaign.findFirstOrThrow({ where: { name: 'Born For Us, Made For You' } })).id}/transition`, { data: { action: 'request_date', date: plannedDay } });
   expect(r.status()).toBe(400);
   expect((await r.json()).error).toBe('That day is full.');
 });

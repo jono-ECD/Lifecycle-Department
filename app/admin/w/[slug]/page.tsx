@@ -5,6 +5,7 @@ import { loadBank } from '@/lib/bank';
 import { Bank } from '@/components/Bank';
 import { AdminNav } from '@/components/AdminNav';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { InsightsPanel } from '@/components/InsightsPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,10 @@ export default async function AdminWorkspacePage({ params }: { params: Promise<{
       </div>
       <Bank initial={bank} adminBase={base} />
       <div className="app" style={{ marginTop: -50 }}>
-        <ActivityFeed workspaceId={ws.id} slug={ws.slug} timezone={ws.timezone} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <InsightsPanel workspaceId={ws.id} />
+          <ActivityFeed workspaceId={ws.id} slug={ws.slug} timezone={ws.timezone} />
+        </div>
       </div>
     </>
   );

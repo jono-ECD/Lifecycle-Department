@@ -13,15 +13,17 @@ test('reviewer link opens the bank with the prototype layout', async ({ page }) 
   await expect(page.locator('.day')).toHaveCount(14);
   await expect(page.locator('.day.has')).toHaveCount(2);
   await expect(page.locator('.window .foot')).toHaveText('Any open day can take an approved campaign. Pick the slot, we handle the rest.');
-  await expect(page.locator('.filters .f')).toHaveCount(8);
+  // clients do not see drafts: All, Bank, and seven statuses
+  await expect(page.locator('.filters .f')).toHaveCount(9);
+  await expect(page.locator('.filters .f.draft')).toHaveCount(0);
   await expect(page.locator('.filters .f').first()).toContainText('All');
   await expect(page.locator('.filters .f').nth(1)).toContainText('Bank');
-  await expect(page.locator('.gcard')).toHaveCount(12);
+  await expect(page.locator('.gcard')).toHaveCount(11);
   await expect(page.locator('.gcard img')).toHaveCount(4);
   await shot(page, 'reviewer-gallery-1280.png');
 
   await page.locator('.vt button').nth(1).click();
-  await expect(page.locator('.row')).toHaveCount(12);
+  await expect(page.locator('.row')).toHaveCount(11);
   await expect(page.locator('.row').first()).toContainText('Ready for review');
   await shot(page, 'reviewer-list-1280.png');
 });
@@ -62,7 +64,8 @@ test('request changes with a note goes back to ECD and lands in the thread', asy
   await page.fill('#note', 'Please swap the hero photo for the summer one.');
   await page.locator('.b:has-text("Request changes")').click();
   await expectToast(page, 'Sent back to ECD with your note.');
-  await expect(page.locator('#dpill')).toHaveText('Draft');
+  await expect(page.locator('#dpill')).toHaveText('Changes requested');
+  await expect(page.locator('.hintline')).toContainText('ECD is working on your changes');
   await expect(page.locator('.thread .msg').last()).toContainText('You');
   await expect(page.locator('.thread .msg').last()).toContainText('Please swap the hero photo for the summer one.');
 });
@@ -73,8 +76,10 @@ test('approve moves a campaign to the bank and hold keeps it', async ({ page }) 
   await page.locator('.b:has-text("Approve")').click();
   await expectToast(page, 'Approved. It is in the bank.');
   await expect(page.locator('#dpill')).toHaveText('Approved');
-  await expect(page.locator('.thread .msg').last()).toContainText('Approved.');
-  await expect(page.locator('.actions .b')).toHaveText([/Schedule/, /Put on hold/]);
+  // the approval names the version it covers and who gave it
+  await expect(page.locator('.thread .msg').last()).toContainText('Approved version 1.');
+  await expect(page.locator('#approval')).toContainText('version 1 by Brittany');
+  await expect(page.locator('.actions .b')).toHaveText([/Request a send date/, /Put on hold/]);
   await expect(page.locator('#headline')).toContainText('Nothing to review right now. 2 approved in the bank, 3 on hold.');
 
   await page.locator('.b:has-text("Put on hold")').click();
@@ -89,28 +94,32 @@ test('approve moves a campaign to the bank and hold keeps it', async ({ page }) 
   await expectToast(page, 'Approved. It is in the bank.');
 });
 
-test('schedule into an open slot, then unschedule to reopen it', async ({ page }) => {
+test('request a send date for an open slot, then withdraw it to reopen the slot', async ({ page }) => {
   await openReviewerBank(page);
   const before = await page.locator('.day.has').count();
   await openCard(page, 'Not Sure Where to Begin?');
   await expect(page.locator('#dpill')).toHaveText('Approved');
-  await page.locator('.b:has-text("Schedule")').click();
+  await page.locator('.b:has-text("Request a send date")').click();
   await expect(page.locator('#picker')).toHaveClass(/on/);
   await expect(page.locator('.slot')).toHaveCount(13);
   await expect(page.locator('.slot:disabled')).toHaveCount(2);
   const slot = page.locator('.slot:enabled').first();
   const label = await slot.innerText();
   await slot.click();
-  await expectToast(page, `Scheduled for ${label}.`);
-  await expect(page.locator('#dpill')).toHaveText('Scheduled');
-  await expect(page.locator('#dmeta')).toContainText('Send date');
+  // picking a date is a request: it holds the day, but only ECD makes it Scheduled
+  await expectToast(page, `Date requested for ${label}. ECD will confirm it.`);
+  await expect(page.locator('#dpill')).toHaveText('Date requested');
+  await expect(page.locator('#dmeta')).toContainText('Requested date');
   await expect(page.locator('#dmeta')).toContainText(label);
-  await expect(page.locator('.day.has')).toHaveCount(before + 1);
+  await expect(page.locator('.day.asked')).toHaveCount(1);
+  await expect(page.locator('.day.has')).toHaveCount(before);
+  await expect(page.locator('.window .legend')).toContainText('date requested');
+  await expect(page.locator('.actions .b')).toHaveText([/Pick another date/, /Withdraw the date/]);
 
-  await page.locator('.b:has-text("Unschedule")').click();
+  await page.locator('.b:has-text("Withdraw the date")').click();
   await expectToast(page, 'Back in the bank, slot reopened.');
   await expect(page.locator('#dpill')).toHaveText('Approved');
-  await expect(page.locator('.day.has')).toHaveCount(before);
+  await expect(page.locator('.day.asked')).toHaveCount(0);
 });
 
 test('sent campaigns offer nothing and a scheduled day opens its campaign', async ({ page }) => {
@@ -124,6 +133,9 @@ test('sent campaigns offer nothing and a scheduled day opens its campaign', asyn
   await page.locator('.day.has').first().click();
   await expect(page.locator('.drawer')).toHaveClass(/on/);
   await expect(page.locator('#dpill')).toHaveText('Scheduled');
+  // ECD scheduled it in Klaviyo, so the client has nothing to press here
+  await expect(page.locator('.actions .b')).toHaveCount(0);
+  await expect(page.locator('.hintline')).toContainText('ECD scheduled this one');
 });
 
 test('mobile layout at 390px is usable: gallery, bottom sheet drawer, actions', async ({ page }) => {
@@ -135,9 +147,9 @@ test('mobile layout at 390px is usable: gallery, bottom sheet drawer, actions', 
   await shot(page, 'reviewer-gallery-390.png');
   await openCard(page, 'Born For Us, Made For You');
   await expect(page.locator('.preview img').first()).toBeVisible();
-  await expect(page.locator('.b:has-text("Schedule")')).toBeVisible();
+  await expect(page.locator('.b:has-text("Request a send date")')).toBeVisible();
   await shot(page, 'reviewer-drawer-390.png');
-  await page.locator('.b:has-text("Schedule")').click();
+  await page.locator('.b:has-text("Request a send date")').click();
   await expect(page.locator('#picker')).toHaveClass(/on/);
   await expect(page.locator('.slot:enabled').first()).toBeVisible();
   await shot(page, 'reviewer-drawer-picker-390.png');
