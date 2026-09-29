@@ -2,7 +2,7 @@
 
 // Per workspace connections: Slack, Asana, Figma, Klaviyo, the content calendar sheet and a generic webhook.
 // Plus the delivery log.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '@/lib/client';
 import { STAGE_KEYS, STAGE_LABELS, type AsanaEnumField, type StageMap } from '@/lib/integrations/asanaStage';
 
@@ -147,6 +147,18 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
     }
   }
 
+  // with a Stage field already saved, show names instead of ids without asking for a click
+  useEffect(() => {
+    if (!initial.asanaProjectGid || !initial.asanaStageFieldGid || !env.asanaToken) return;
+    let gone = false;
+    api<{ fields?: AsanaEnumField[] }>(`/api/admin/integrations/${workspaceId}/sync`, { body: { target: 'asana_fields' } }).then((r) => {
+      if (!gone && r.ok) setFields((cur) => (cur.length ? cur : (r.data.fields ?? [])));
+    });
+    return () => {
+      gone = true;
+    };
+  }, [workspaceId, initial.asanaProjectGid, initial.asanaStageFieldGid, env.asanaToken]);
+
   const stageField = fields.find((x) => x.gid === f.asanaStageFieldGid);
   const problems = events.filter((e) => e.type === 'sync_error' && e.status === 'failed');
   const deliveries = events.filter((e) => e.type !== 'sync_error');
@@ -231,7 +243,7 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
           {(fields.length > 0 || f.asanaStageFieldGid) && (
             <>
               <label>
-                <b>Stage field, bound by id</b>
+                <b>Stage field in Asana</b>
                 {fields.length > 0 ? (
                   <select value={f.asanaStageFieldGid} onChange={(e) => setF((cur) => ({ ...cur, asanaStageFieldGid: e.target.value, asanaStageMap: {} }))} data-testid="asana-stage-field">
                     <option value="">Pick the field</option>
@@ -242,15 +254,13 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
                     ))}
                   </select>
                 ) : (
-                  <input type="text" value={f.asanaStageFieldGid} readOnly />
+                  <input type="text" value="Loading the names from Asana" readOnly />
                 )}
               </label>
               <div className="stagemap" data-testid="asana-stage-map">
                 {STAGE_KEYS.map((k) => (
                   <label key={k}>
-                    <b>
-                      {STAGE_LABELS[k].direction === 'in' ? 'Reads' : 'Writes'}: {STAGE_LABELS[k].label}
-                    </b>
+                    <b>{STAGE_LABELS[k].ask}</b>
                     {stageField ? (
                       <select value={f.asanaStageMap[k] ?? ''} onChange={(e) => setF((cur) => ({ ...cur, asanaStageMap: { ...cur.asanaStageMap, [k]: e.target.value } }))}>
                         <option value="">Not used</option>
@@ -261,9 +271,11 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
                         ))}
                       </select>
                     ) : (
-                      <input type="text" value={f.asanaStageMap[k] ?? ''} readOnly placeholder="Load the fields to choose" />
+                      <input type="text" value={f.asanaStageMap[k] ? 'Loading the names from Asana' : ''} readOnly placeholder="Click Load the Stage fields to choose" />
                     )}
-                    <span>{STAGE_LABELS[k].hint}</span>
+                    <span>
+                      {STAGE_LABELS[k].direction === 'in' ? 'Asana tells the Bank.' : 'The Bank writes this to Asana.'} Usual name: {STAGE_LABELS[k].label}.
+                    </span>
                   </label>
                 ))}
               </div>
@@ -330,7 +342,8 @@ export function IntegrationsPanel({ workspaceId, initial, env, status: initialSt
         <div className="form">
           <label>
             <b>{status.klaviyoConnected ? `Private API key (saved as ${status.klaviyoHint ?? 'pk_'}), paste a new one to replace it` : 'Private API key'}</b>
-            <input type="password" value={f.klaviyoKey} onChange={(e) => set('klaviyoKey', e.target.value)} placeholder="pk_..." autoComplete="off" data-testid="klaviyo-key" />
+            {/* not a password field: browsers fill those with the saved sign in password, which then gets sent as the key */}
+            <input type="text" name="klaviyo-private-key" value={f.klaviyoKey} onChange={(e) => set('klaviyoKey', e.target.value)} placeholder="pk_..." autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" data-form-type="other" style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace' }} data-testid="klaviyo-key" />
           </label>
         </div>
         {status.klaviyoError && <div className="err">{status.klaviyoError}</div>}

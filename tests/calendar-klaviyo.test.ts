@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fetchCalendar, parseCsv, parseSheetDate, readCalendar, sameCampaign, toCsvUrl } from '@/lib/integrations/sheet';
 import { unmatched } from '@/lib/schedule';
 import { KlaviyoClient, KlaviyoError } from '@/lib/integrations/klaviyo';
+import { readKlaviyoKey } from '@/lib/integrations/klaviyoKey';
 import { FigmaClient, fileKeyFrom, frameUrl } from '@/lib/integrations/figma';
 import { decryptSecret, encryptSecret, hintFor } from '@/lib/secrets';
 import { money, num, pct } from '@/lib/format';
@@ -168,9 +169,31 @@ describe('Klaviyo client', () => {
   });
   it('explains a bad key and a rate limit in plain words', async () => {
     const bad = fakeFetch(() => new Response('{"errors":[{"detail":"nope"}]}', { status: 401 }));
-    await expect(new KlaviyoClient('pk_x', bad.fn).campaigns()).rejects.toThrow(/rejected the key/);
+    await expect(new KlaviyoClient('pk_x', bad.fn).campaigns()).rejects.toThrow(/rejected the key.*Klaviyo said: nope/);
+    const scope = fakeFetch(() => new Response('{"errors":[{"detail":"missing scope"}]}', { status: 403 }));
+    await expect(new KlaviyoClient('pk_x', scope.fn).conversionMetricId()).rejects.toThrow(/not allowed to read metrics/);
     const slow = fakeFetch(() => new Response('', { status: 429 }));
     await expect(new KlaviyoClient('pk_x', slow.fn).campaigns()).rejects.toBeInstanceOf(KlaviyoError);
+  });
+});
+
+describe('reading a pasted Klaviyo key', () => {
+  const KEY = 'pk_0123456789abcdef0123456789abcdef01';
+  it('accepts the key however it was copied', () => {
+    for (const paste of [KEY, `  ${KEY}\n`, `"${KEY}"`, `'${KEY}',`, `Klaviyo-API-Key ${KEY}`, `KLAVIYO_API_KEY=${KEY}`, `﻿${KEY}​`, KEY.replace('pk_', 'PK_'), `${KEY.slice(0, 20)} ${KEY.slice(20)}`]) expect(readKlaviyoKey(paste)).toEqual({ key: KEY });
+  });
+  it('accepts keys with underscores and hyphens, Klaviyo decides if they work', () => {
+    expect(readKlaviyoKey('pk_AbC123_def-456_ghi789')).toEqual({ key: 'pk_AbC123_def-456_ghi789' });
+  });
+  it('says what is wrong without repeating what was pasted', () => {
+    expect(readKlaviyoKey('AbC123').problem).toMatch(/public key/);
+    expect(readKlaviyoKey('pk_abc').problem).toMatch(/cut short/);
+    expect(readKlaviyoKey(`hunter2secret${KEY}`).problem).toMatch(/other text in front/);
+    expect(readKlaviyoKey(`${KEY}!!oops`).problem).toMatch(/characters a Klaviyo key never has/);
+    const other = readKlaviyoKey('my-sign-in-password').problem!;
+    expect(other).toMatch(/19 characters and does not start with pk_/);
+    expect(other).not.toContain('my-sign-in');
+    expect(readKlaviyoKey(`hunter2secret${KEY}`).problem).not.toContain('hunter2');
   });
 });
 

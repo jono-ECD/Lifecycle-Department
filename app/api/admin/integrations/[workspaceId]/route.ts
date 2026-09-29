@@ -6,6 +6,7 @@ import { envStatus } from '@/lib/integrations/env';
 import { toCsvUrl } from '@/lib/integrations/sheet';
 import { STAGE_KEYS } from '@/lib/integrations/asanaStage';
 import { feedUrl } from '@/lib/integrations/sheetTab';
+import { readKlaviyoKey } from '@/lib/integrations/klaviyoKey';
 import { encryptSecret, hintFor } from '@/lib/secrets';
 import { newToken } from '@/lib/tokens';
 
@@ -34,7 +35,7 @@ const Body = z.object({
   googleSheetId: z.union([empty, z.string().trim().regex(/^[A-Za-z0-9_-]{20,}$/, 'The sheet id is the long part of the Google Sheets URL after /d/.')]).default(''),
   googleSheetTab: text(80).default(''),
   // write only: empty keeps the stored key, "remove" clears it
-  klaviyoKey: z.string().trim().max(200).default(''),
+  klaviyoKey: z.string().trim().max(400).default(''),
   feed: z.enum(['keep', 'create', 'remove']).default('keep'),
 });
 
@@ -63,8 +64,9 @@ export const PATCH = handler(async (req, ctx: Ctx) => {
   const data: Record<string, unknown> = { ...input, asanaStageMap: Object.keys(map).length ? JSON.stringify(map) : null };
   if (klaviyoKey === 'remove') Object.assign(data, { klaviyoKeyEnc: null, klaviyoKeyHint: null, klaviyoMetricId: null, klaviyoSyncedAt: null, klaviyoError: null });
   else if (klaviyoKey) {
-    if (!/^pk_[A-Za-z0-9]{10,}$/.test(klaviyoKey)) throw new ApiError(400, 'Klaviyo private keys start with pk_. Find it in Klaviyo under Settings, API keys.');
-    Object.assign(data, { klaviyoKeyEnc: encryptSecret(klaviyoKey), klaviyoKeyHint: hintFor(klaviyoKey), klaviyoMetricId: null, klaviyoSyncedAt: null, klaviyoError: null });
+    const read = readKlaviyoKey(klaviyoKey);
+    if (read.problem !== undefined) throw new ApiError(400, read.problem);
+    Object.assign(data, { klaviyoKeyEnc: encryptSecret(read.key), klaviyoKeyHint: hintFor(read.key), klaviyoMetricId: null, klaviyoSyncedAt: null, klaviyoError: null });
   }
   if (feed === 'create') data.feedToken = newToken();
   if (feed === 'remove') data.feedToken = null;

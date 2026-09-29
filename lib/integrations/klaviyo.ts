@@ -54,7 +54,16 @@ export class KlaviyoClient {
     if (!r.ok) {
       const text = await r.text().catch(() => '');
       const detail = text.match(/"detail"\s*:\s*"([^"]+)"/)?.[1];
-      const msg = r.status === 401 || r.status === 403 ? 'Klaviyo rejected the key. Check that it is a private key with campaigns, metrics and reporting read access.' : r.status === 429 ? 'Klaviyo asked us to slow down. Metrics refresh again on the next sync.' : `Klaviyo ${r.status}${detail ? `: ${detail}` : ''}`;
+      const what = /campaign-values-reports/.test(url) ? 'results' : /\/metrics/.test(url) ? 'metrics' : 'campaigns';
+      const said = detail ? ` Klaviyo said: ${detail}` : '';
+      const msg =
+        r.status === 401
+          ? `Klaviyo rejected the key. It may have been deleted, or copied from a different account.${said}`
+          : r.status === 403
+            ? `The key works, but it is not allowed to read ${what}. Create a key with read access to campaigns, metrics and reporting, or a read only key.${said}`
+            : r.status === 429
+              ? 'Klaviyo asked us to slow down. Metrics refresh again on the next sync.'
+              : `Klaviyo answered ${r.status} when reading ${what}.${said}`;
       throw new KlaviyoError(r.status, msg);
     }
     return (await r.json()) as T;

@@ -144,3 +144,10 @@ Mauricio's boss shared "Campaign Bank Architecture", an MVP plan marked "Not bui
 - A scripted edit silently failed to match because of escaping, and one full test run was wasted. Precise edits now go through the editor.
 - The Connections screen imported Stage constants from a server file that reads the disk. Moved them to `lib/integrations/asanaStage.ts`.
 - SMS copy containing "Shop now: ..." was cut at the colon. Only known template labels end the copy now.
+
+## Real connections, 2026-09-29
+
+- Klaviyo: real key saved for Blessed Botanicals. First sync found 81 campaigns, 78 sent, 69 with results.
+- Slack: webhook saved for Blessed Botanicals. No message sent through it yet.
+- Asana: real token in `.env`, sample mode for Asana removed. It is Mauricio's personal token, used for simplicity. TO DO before going live: replace it with a token from a general ECD account and revoke the personal one.
+- Figma: still sample mode.

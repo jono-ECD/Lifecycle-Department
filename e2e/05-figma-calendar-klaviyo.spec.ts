@@ -135,7 +135,12 @@ test('Klaviyo: connect, sync, and the sent history shows results to ECD and to t
   await hydrated(page);
   await page.fill('[data-testid=klaviyo-key]', 'not-a-key');
   await page.click('[data-testid=save-integrations]');
-  await expect(page.locator('.conn > .err')).toContainText('Klaviyo private keys start with pk_');
+  await expect(page.locator('.conn > .err')).toContainText('does not start with pk_');
+  // a key copied with quotes and a line break is accepted as is
+  await page.fill('[data-testid=klaviyo-key]', `"${TEST_KLAVIYO_KEY}" `);
+  await page.click('[data-testid=save-integrations]');
+  await expect(page.locator('.conn > .ok')).toHaveText('Saved.');
+  await expect(page.locator('[data-conn=klaviyo] label b')).toContainText('pk_••••6789');
   await page.fill('[data-testid=klaviyo-key]', TEST_KLAVIYO_KEY);
   await page.click('[data-testid=save-integrations]');
   await expect(page.locator('.conn > .ok')).toHaveText('Saved.');

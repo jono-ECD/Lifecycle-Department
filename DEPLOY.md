@@ -75,6 +75,7 @@ Run it every five minutes, which is the Asana polling interval. Each job inside 
 3. `SESSION_SECRET` and `CRON_SECRET` are random.
 4. The seeded reviewer link is revoked and the real one was created from the admin.
 5. `npm run check` was green on the commit being deployed.
+6. The Asana and Figma tokens belong to a general ECD account, not to a person. Any personal token used during setup was revoked in Asana or Figma.
 
 ## Upgrading an existing database
 
