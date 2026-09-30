@@ -1,0 +1,50 @@
+import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { ApiError, handler, json, parseBody, requireAdminActor } from '@/lib/api';
+import { hashToken, newToken } from '@/lib/tokens';
+import { emailLink, reviewerLink } from '@/lib/reviewers';
+
+type Ctx = { params: Promise<{ id: string }> };
+
+const Body = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('revoke') }),
+  z.object({ op: z.literal('regenerate') }),
+  z.object({ op: z.literal('link') }),
+  z.object({ op: z.literal('set_pin'), pin: z.string().regex(/^\d{4}$/, 'The PIN is 4 digits.') }),
+  z.object({ op: z.literal('clear_pin') }),
+  z.object({ op: z.literal('set_approver'), canApprove: z.boolean() }),
+]);
+
+// Revoke a link, issue a new one, manage the optional PIN, or change who may approve.
+export const POST = handler(async (req, ctx: Ctx) => {
+  await requireAdminActor();
+  const { id } = await ctx.params;
+  const body = await parseBody(req, Body);
+  const r = await db.reviewer.findUnique({ where: { id } });
+  if (!r) throw new ApiError(404, 'Reviewer not found.');
+  switch (body.op) {
+    case 'revoke':
+      await db.reviewer.update({ where: { id }, data: { revokedAt: new Date() } });
+      return json({ ok: true });
+    case 'regenerate': {
+      const token = newToken();
+      await db.reviewer.update({ where: { id }, data: { tokenHash: hashToken(token), revokedAt: null } });
+      return json({ link: reviewerLink(token) });
+    }
+    case 'link': {
+      // A signed link for an existing reviewer, valid 45 days, without rotating their personal token.
+      if (r.revokedAt) throw new ApiError(400, 'This reviewer is revoked. Issue a new link instead.');
+      return json({ link: emailLink(r.id) });
+    }
+    case 'set_pin':
+      await db.reviewer.update({ where: { id }, data: { pinHash: await bcrypt.hash(body.pin, 10) } });
+      return json({ ok: true });
+    case 'clear_pin':
+      await db.reviewer.update({ where: { id }, data: { pinHash: null } });
+      return json({ ok: true });
+    case 'set_approver':
+      await db.reviewer.update({ where: { id }, data: { canApprove: body.canApprove } });
+      return json({ ok: true });
+  }
+});
