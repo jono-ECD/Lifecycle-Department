@@ -151,3 +151,7 @@ Mauricio's boss shared "Campaign Bank Architecture", an MVP plan marked "Not bui
 - Slack: webhook saved for Blessed Botanicals. No message sent through it yet.
 - Asana: real token in `.env`, sample mode for Asana removed. It is Mauricio's personal token, used for simplicity. TO DO before going live: replace it with a token from a general ECD account and revoke the personal one.
 - Figma: still sample mode.
+
+## Hosting on Netlify, 2026-09-29
+
+Decided: the code goes into the boss's public repository jono-ECD/Lifecycle-Department as a folder, and runs on Netlify. Built and tested against stand ins: Netlify Blobs storage, uploads in parts, schema chosen from DATABASE_URL, readiness check and admin bootstrap at build, scheduled cron function, DEPLOY.md path 3. Not yet done: the push to GitHub (waiting for the GitHub account to use) and the first real deploy.

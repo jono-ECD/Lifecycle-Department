@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { db } from '@/lib/db';
 import { getStorage } from '@/lib/storage';
+import { UserError } from '@/lib/errors';
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_PDF_BYTES, PDF_TYPE, extFor, pdfThumbnail, processImage } from '@/lib/images';
 
 export interface IncomingFile {
@@ -9,7 +10,7 @@ export interface IncomingFile {
   buffer: Buffer;
 }
 
-export class UploadError extends Error {}
+export class UploadError extends UserError {}
 
 export const hashOf = (data: Buffer | string) => createHash('sha256').update(data).digest('hex');
 

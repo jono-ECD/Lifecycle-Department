@@ -22,5 +22,8 @@ export function loadEnv(cwd = process.cwd()) {
 
 export function env(key: string, fallback = ''): string {
   const v = process.env[key];
-  return v === undefined || v === '' ? fallback : v;
+  if (v !== undefined && v !== '') return v;
+  // Netlify sets URL to the site's address, so APP_URL is optional there
+  if (key === 'APP_URL' && process.env.URL) return process.env.URL;
+  return fallback;
 }

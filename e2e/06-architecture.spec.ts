@@ -335,7 +335,8 @@ test('listed send days: the client can only ask for days ECD opened', async ({ p
   expect(closed.length).toBe(10);
   await expect(page.locator('.day.closed').first()).toBeVisible();
   const id = (await db().campaign.findFirstOrThrow({ where: { name: 'Born For Us, Made For You' } })).id;
-  const no = await act(page.request, id, { action: 'request_date', date: closed.find((d: { today: boolean }) => !d.today).ymd });
+  // a closed day that is not also the day an earlier test blocked, since blocked is checked first
+  const no = await act(page.request, id, { action: 'request_date', date: closed.find((d: { today: boolean; blocked: string | null }) => !d.today && !d.blocked).ymd });
   expect(no.status()).toBe(400);
   expect((await no.json()).error).toBe('That day is not a send day.');
   await shot(page, 'reviewer-listed-days-1280.png');

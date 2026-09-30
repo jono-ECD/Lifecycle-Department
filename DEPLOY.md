@@ -1,6 +1,8 @@
 # Deploying the Campaign Bank
 
-Two paths. The simple one runs on one small box with SQLite and files on a volume. The proper one uses Postgres and S3 compatible storage and can run anywhere, including hosts with no persistent disk.
+Three paths. The simple one runs on one small box with SQLite and files on a volume. The proper one uses Postgres and S3 compatible storage and can run anywhere. The third is Netlify, which needs Postgres from elsewhere and keeps files in Netlify Blobs.
+
+Whatever the host, `DATABASE_URL` decides the schema: a `postgres://` address uses `prisma/schema.postgres.prisma`, written from `schema.prisma` by `scripts/prisma-schema.mjs` on every Prisma command. Edit `schema.prisma` only.
 
 ## Path 1, simplest: Railway or Fly with a persistent volume
 
@@ -19,10 +21,54 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 ## Path 2, proper: Postgres and S3
 
 1. Provision Postgres and an S3 compatible bucket (AWS S3, Cloudflare R2, Backblaze B2, MinIO). Make the bucket public read, or put a CDN in front and set `S3_PUBLIC_URL` to it.
-2. Point Prisma at the Postgres schema. Either copy it over the default, `cp prisma/schema.postgres.prisma prisma/schema.prisma`, or pass `--schema prisma/schema.postgres.prisma` to every Prisma command and set `prisma.schema` in `package.json`. The two files are identical except for the provider line; the models use only `String`, `Int`, `Boolean` and `DateTime`.
-3. `npx prisma db push --skip-generate` (or `prisma migrate deploy` once you start keeping migrations), then `npm run seed` once.
+2. Set `DATABASE_URL` to the Postgres address. Every `npm run` script picks the Postgres schema from it; nothing else to change.
+3. `npm run db:push`, then `npm run seed` once, or `node scripts/bootstrap.mjs` to create only the admin without the sample workspace.
 4. Set `STORAGE_DRIVER=s3` and the `S3_*` variables. Uploads go straight to the bucket; the app serves URLs from `S3_PUBLIC_URL`.
 5. Run as many instances as you like. Use an external cron for reminders (below) rather than `RUN_SCHEDULER`, so the job runs exactly once.
+
+## Path 3, Netlify: Postgres from Supabase, files in Netlify Blobs
+
+Netlify has no disk and runs each page as a function, so the database must live elsewhere and files go to Netlify's own storage. The code handles both; the setup is four steps.
+
+### 1. A Postgres database
+
+Create a free project at supabase.com. In the project, click **Connect**, choose **Session pooler**, and copy the URI. It looks like `postgresql://postgres.xxxx:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres`. Put the database password in place of `PASSWORD`. This is `DATABASE_URL`. The session pooler works from Netlify; the direct connection often does not.
+
+### 2. The site
+
+In Netlify: **Add new project**, **Import an existing project**, pick the GitHub repository. Set **Base directory** to the folder that holds this app inside the repository. Leave the build command and publish directory alone; `netlify.toml` in this folder sets them.
+
+### 3. Environment variables
+
+Before the first deploy, add these under **Site configuration**, **Environment variables**. The build refuses to run with the values from `.env.example`, because that file is public.
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | The Supabase session pooler URI from step 1 |
+| `SESSION_SECRET` | 32 or more random characters |
+| `CRON_SECRET` | 16 or more random characters |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | The first admin. The password must be 12 characters or more |
+| `MAIL_FROM` | A sender on a domain verified in Resend |
+| `RESEND_API_KEY` | From Resend. Without it no email goes out |
+| `ASANA_ACCESS_TOKEN`, `FIGMA_ACCESS_TOKEN` | The agency tokens, from a general account |
+
+Random strings, in PowerShell: `-join ((48..57)+(97..122) | Get-Random -Count 48 | % {[char]$_})`. On a Mac: `openssl rand -hex 24`.
+
+`APP_URL` is optional here, Netlify supplies the site address. Set it once a custom domain is in place. `STORAGE_DRIVER` is optional too, Netlify Blobs is the default on Netlify.
+
+### 4. Deploy
+
+Click **Deploy**. The build checks the settings, creates the tables, creates the admin, and builds the app. Then sign in at `/admin/login`, add the first workspace, and enter that client's connections. Reminders, Asana pulls and Klaviyo refreshes run every five minutes from `netlify/functions/cron.mjs`; no cron to set up.
+
+### Limits that shaped the code
+
+- A request to a Netlify function carries about 4.5 MB. Files bigger than 3.5 MB go up in parts of 3 MB and are put back together on the server, so the 15 MB image and 25 MB PDF limits still hold. See `lib/uploadParts.ts`.
+- A function runs for 60 seconds at most. Importing many large frames from Figma in one go may hit it; import a few at a time if it does.
+- Files are served through the app, cached for a year at the edge. Netlify's own storage is used, so no bucket and no keys are needed.
+
+### Not verified yet
+
+Everything above is written from Netlify's documentation and tested against stand ins. The first deploy is the first real run. Expect a small fix or two, and send the build log if it fails.
 
 ## Environment variables
 
@@ -32,7 +78,7 @@ Backups: copy the SQLite file and the storage folder. Both live on the volume.
 | `SESSION_SECRET` | yes | 32 or more random characters. Changing it signs everyone out and invalidates email links |
 | `APP_URL` | yes | Public https URL, no trailing slash. Used in reviewer links, emails and the in-process scheduler |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | seed | The first admin. Change the password after the first sign in by creating a new admin and removing the seeded one, or re-run the seed with a new password |
-| `STORAGE_DRIVER` | yes | `local` or `s3` |
+| `STORAGE_DRIVER` | yes | `local`, `s3` or `netlify`. On Netlify it defaults to `netlify` |
 | `STORAGE_DIR` | local | Folder on the volume |
 | `S3_BUCKET`, `S3_REGION` | s3 | Bucket and region |
 | `S3_ENDPOINT` | s3, optional | For R2, B2, MinIO. Path style is used when set |

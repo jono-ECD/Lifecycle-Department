@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError, type ZodType } from 'zod';
 import { currentActor, type Actor } from '@/lib/auth';
+import { UserError } from '@/lib/errors';
 
 export class ApiError extends Error {
   constructor(
@@ -65,6 +66,7 @@ export function handler<Ctx>(fn: (req: Request, ctx: Ctx) => Promise<Response>) 
       return await fn(req, ctx);
     } catch (err) {
       if (err instanceof ApiError) return fail(err.status, err.message);
+      if (err instanceof UserError) return fail(400, err.message);
       if (err instanceof ZodError) return fail(400, err.issues[0]?.message ?? 'Invalid input.');
       console.error(err);
       return fail(500, 'Something went wrong on our side.');

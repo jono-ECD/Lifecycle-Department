@@ -2,7 +2,9 @@
 // Only DateTime, String, Int, Boolean are used so both providers work without changes.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native for the machine at hand, the second for hosts that run functions on Amazon Linux
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

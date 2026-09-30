@@ -44,7 +44,7 @@ Copy `.env.example` to `.env` (the scripts do this for you). Everything has a wo
 | `SESSION_SECRET` | Cookie encryption and email link signing. At least 32 random characters in production |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | The first admin, created or updated by the seed |
 | `APP_URL` | Public URL, used in reviewer links and emails |
-| `STORAGE_DRIVER` | `local` (default) or `s3` |
+| `STORAGE_DRIVER` | `local` (default), `s3`, or `netlify` (default on Netlify) |
 | `STORAGE_DIR` | Folder for the local driver, default `./storage` |
 | `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL` | S3 compatible storage (AWS, R2, MinIO) |
 | `RESEND_API_KEY` | When set, emails go through Resend. When missing, they print to the console and are still logged |

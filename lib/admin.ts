@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { ApiError } from '@/lib/api';
 import { hashOf, storeSmsVersion, storeVersion, validateFile, type IncomingFile } from '@/lib/uploads';
 import { getStorage } from '@/lib/storage';
+import { assemble, discard } from '@/lib/parts';
+import { parseUploadRef } from '@/lib/uploadParts';
 import { checkSlot } from '@/lib/slots';
 import { dateToYmd, isYmd, ymdToDate } from '@/lib/dates';
 import { CHANNEL_KEYS, HOLDS_A_DAY, STATUS, STATUS_KEYS, TYPE_KEYS, VOIDED_BY_NEW_VERSION, type Status } from '@/lib/status';
@@ -75,10 +77,25 @@ export function slugify(s: string): string {
     .slice(0, 60);
 }
 
-/** Reads uploaded files from a multipart form. Order in the form is the order of the version. */
+/**
+ * Reads uploaded files from a multipart form. Order in the form is the order of the version.
+ * A large file arrives in parts beforehand and the form names it; see lib/uploadParts.ts.
+ */
 export async function filesFrom(form: FormData, field = 'files'): Promise<IncomingFile[]> {
   const out: IncomingFile[] = [];
   for (const v of form.getAll(field)) {
+    if (typeof v === 'string') {
+      const ref = parseUploadRef(v);
+      if (!ref) continue;
+      try {
+        validateFile(ref);
+      } catch (err) {
+        await discard(ref);
+        throw err;
+      }
+      out.push({ name: ref.name, type: ref.type, buffer: await assemble(ref) });
+      continue;
+    }
     if (!(v instanceof File) || v.size === 0) continue;
     validateFile({ name: v.name, type: v.type, size: v.size });
     out.push({ name: v.name, type: v.type, buffer: Buffer.from(await v.arrayBuffer()) });
