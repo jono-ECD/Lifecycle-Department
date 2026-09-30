@@ -28,6 +28,7 @@ integrations/   Klaviyo Composer and MCP — verified capabilities only
 templates/      Reusable output formats
 governance/     Authoring, review, isolation, changelog
 scripts/        sync.py — regenerates derived docs from their sources
+apps/           Software the department runs: campaign-bank, the client review app
 ```
 
 ## Start here
