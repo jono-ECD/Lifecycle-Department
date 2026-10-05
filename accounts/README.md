@@ -21,6 +21,7 @@ it by slug. Nothing else in this repository should contain a hardcoded account I
 | [Something Borrowed Blooms](something-borrowed-blooms/) | `something-borrowed-blooms` | `SmTYz2` | ⚠️ | ❌ | ❌ |
 | [Bad Boy Mower Parts](bad-boy-mower-parts/) | `bad-boy-mower-parts` | `UwjazH` | ⚠️ | ❌ | ❌ |
 | [Lazy Leaf](lazy-leaf/) | `lazy-leaf` | `RQeWJs` | ✅ | ✅ | ❌ |
+| [HigherDOSE](higher-dose/) | `higher-dose` | `HyvZn9` | ✅ | ✅ | ❌ |
 <!-- END:generated:account-index -->
 
 **Verified** = account ID confirmed against the live Klaviyo API (2026-09-20).

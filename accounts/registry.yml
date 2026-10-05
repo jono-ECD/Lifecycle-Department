@@ -97,3 +97,18 @@ accounts:
       klaviyo_mcp: "Klaviyo - Lazy Leaf"
       hiro_client_id: null
     status: active
+
+  - slug: higher-dose
+    name: HigherDOSE
+    klaviyo_account_id: HyvZn9
+    verified: true   # confirmed via accounts endpoint 2026-10-05
+    website: higherdose.com
+    industry: Ecommerce, Health & Beauty
+    timezone: America/New_York
+    currency: USD
+    owner: null  # Mauricio is AM; repo authorizer not yet named
+    agent_access: read_only
+    access:
+      klaviyo_mcp: "Klaviyo - HigherDOSE"
+      hiro_client_id: null
+    status: active

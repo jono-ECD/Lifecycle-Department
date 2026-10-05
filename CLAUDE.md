@@ -47,9 +47,10 @@ account-local skill. See `governance/skill-authoring.md`.
 | Something Borrowed Blooms | `something-borrowed-blooms` | `SmTYz2` | **no** | none | `none` | _unassigned_ |
 | Bad Boy Mower Parts | `bad-boy-mower-parts` | `UwjazH` | **no** | none | `none` | _unassigned_ |
 | Lazy Leaf | `lazy-leaf` | `RQeWJs` | yes | Klaviyo MCP | `read_only` | _unassigned_ |
+| HigherDOSE | `higher-dose` | `HyvZn9` | yes | Klaviyo MCP | `read_only` | _unassigned_ |
 <!-- END:generated:access-matrix -->
 
-Three of five accounts have **no connector**. If asked to report on, analyze, or QA
+Three of six accounts have **no connector**. If asked to report on, analyze, or QA
 one of them, say so plainly rather than producing an empty or inferred answer.
 
 "Verified: no" means the account ID came from a human and has not been confirmed
