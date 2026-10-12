@@ -19,6 +19,12 @@ Which business actions map to which verified capabilities.
 | Read brand email defaults | `Klaviyo - Blessed Botanicals` | `get_brand_email_defaults` | read | 2026-09-21 |
 | List email templates | `Klaviyo - Blessed Botanicals` | `list_email_templates` | read | 2026-09-21 |
 | Read one template's DnD definition | `Klaviyo - Blessed Botanicals` | `get_email_template` | read | 2026-09-21 |
+| List segments, with definitions | `Klaviyo - Blessed Botanicals` | `get_segments` | read | 2026-10-12 |
+| List lists | `Klaviyo - Blessed Botanicals` | `get_lists` | read | 2026-10-12 |
+| List campaigns (email channel filter required) | `Klaviyo - Blessed Botanicals` | `get_campaigns` | read | 2026-10-12 |
+| Read store metadata | `Shopify` (store `getblessedbotanicals.com`) | `get-shop-info` | read | 2026-10-12 |
+| Search and read collections with products | `Shopify` | `search_collections`, `get-collection` | read | 2026-10-12 |
+| Campaign performance for one client | `Hiro Analytics` | `get_campaigns` | read | 2026-10-12 |
 
 Used to confirm the Klaviyo account IDs in `accounts/registry.yml` for
 Blessed Botanicals (`RaFbmF`) and Lazy Leaf (`RQeWJs`), and to build
@@ -33,6 +39,15 @@ Notes from exercising the template reads:
   is not — a single content-heavy template runs to thousands of lines.
 - An empty result is a finding. `get_brand_colors` returned `[]` for Blessed
   Botanicals, which is what established that the brand library is unpopulated.
+- `get_catalog_items` returned `[]` for Blessed Botanicals on 2026-10-12. The
+  Shopify-integrated catalog is not readable through that endpoint, so native
+  `product` blocks cannot be verified by an agent. Product features are built as
+  image + text + button with Shopify CDN image URLs.
+- `get_segments` returns a segment's full `definition` when asked for it. Read
+  the definition, not the name — the "Interested in…" segments cap at ≤3 orders
+  all-time, which excludes repeat buyers of the category.
+- The Shopify MCP connector resolves to a single store from its token. Confirm
+  the store domain with `get-shop-info` before trusting any read.
 
 ## Pending
 
@@ -40,8 +55,10 @@ Not verified. Listed because workflows reference them, **not** because they work
 
 | Action | Kind | Blocker |
 |---|---|---|
-| Read campaign / flow performance | read | Unexercised |
-| Read segments, lists, profiles | read | Unexercised |
+| Read flow performance | read | Unexercised |
+| Read profiles | read | Unexercised |
+| Create a DnD email template | **create** | Unexercised; needs `agent_access: draft` |
+| Upload an image from a URL | **create** | Unexercised; needs `agent_access: draft` |
 | Create a campaign draft | **create** | Unexercised; also needs an authorization decision |
 | Assign a template to a campaign message | **update** | Unexercised |
 | Schedule or send a campaign | **publish** | Unexercised; requires explicit human authorization — see `access-policy.md` |

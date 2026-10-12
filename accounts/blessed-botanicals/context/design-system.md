@@ -28,6 +28,13 @@ in May 2026 and use **none** of it; the May 2026 NTK doesn't mention a rebrand.
 Until someone confirms, `design-tokens.json` is marked `status: target_state` —
 a proposal, not the system. Everything below is written on that basis.
 
+**Evidence, 2026-10-12:** five October 2026 campaign sends (Stack & Save EM1–EM3,
+Free Elderberry EM1–EM2) use the forest / sage / cream / gold / amber palette and
+a serif display face with italic emphasis — the April guidelines, applied. The
+rebrand is in use in live sends even if nobody has confirmed it in writing. The
+tokens are being treated as live for the first creative-production test; the
+question stays open until a human closes it.
+
 ## The system
 
 ### Palette

@@ -8,6 +8,7 @@ The authoritative index of shared skills. Full instructions live in each
 <!-- BEGIN:generated:skills-catalog -->
 | ID | Skill | Status | Version | Owner | Purpose |
 |---|---|---|---|---|---|
+| `execution.campaign-brief` | [Campaign Brief](execution/campaign-brief/SKILL.md) | draft | 0.1.0 | _unassigned_ | Turn a campaign idea into an approved, goal-oriented brief that copy and design can work from without guessing. |
 | `execution.email-copy` | [Email Copy](execution/email-copy/SKILL.md) | draft | 0.1.0 | _unassigned_ | Write campaign or flow email copy from an approved brief, in the account's voice, within the account's messaging constraints. |
 | `execution.email-design` | [Email Design](execution/email-design/SKILL.md) | draft | 0.1.0 | _unassigned_ | Turn approved copy and an account's design tokens into a valid Klaviyo drag-and-drop template definition, built from live-text blocks. |
 | `execution.flow-architecture` | [Flow Architecture](execution/flow-architecture/SKILL.md) | draft | 0.1.0 | _unassigned_ | Build a Klaviyo flow — trigger, path, delays, branches, and filters — directly in a connected account, using the `create_flow` MCP tool. |
@@ -39,7 +40,6 @@ capability is developed — not as an empty placeholder.
 | Planned ID | Group | Notes |
 |---|---|---|
 | `execution.research` | execution | Feeds strategy skills; see `workflows/content-research.md` |
-| `execution.campaign-brief` | execution | Next priority — gates `execution.email-copy`; step 2 of `workflows/creative-production.md` |
 | `execution.sms-copy` | execution | Needs `messaging-constraints` SMS section populated first |
 | `execution.creative-direction` | execution | Step 4 of `workflows/creative-production.md`, feeding `execution.email-design` |
 | `execution.campaign-flow-qa` | execution | **Recommended first build** — gates three workflows |

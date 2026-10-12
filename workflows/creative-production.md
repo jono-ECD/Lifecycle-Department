@@ -3,8 +3,8 @@
 - ID: `workflow.creative-production`
 - Owner: _unassigned_
 - Status: draft
-- Version: 0.2.0
-- Last reviewed: 2026-09-21
+- Version: 0.2.1
+- Last reviewed: 2026-10-12
 
 ## Purpose
 
@@ -56,9 +56,9 @@ before building production creative.
 | 8 | Create platform draft | — | Klaviyo template + campaign draft, **only if `agent_access: draft`** |
 | 9 | Schedule or send | — | **Human-only, per instance. Never an agent.** |
 
-Steps 2 and 4 depend on skills that are **not yet built** — see
-`skills/CATALOG.md`. Until they exist, do those steps manually and record what
-was decided.
+Step 4 depends on a skill that is **not yet built** — see `skills/CATALOG.md`.
+Until it exists, do that step manually and record what was decided. Step 2 uses
+`execution.campaign-brief` (draft, 0.1.0) and `templates/campaign-brief.md`.
 
 ## Quality gate
 
