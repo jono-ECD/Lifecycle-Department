@@ -39,7 +39,7 @@ your own.**
 | Organic Candida Cleanse | Gut wellness, microbial balance, sugar cravings, yeast concerns, brain fog, sluggishness | $34 / $49 |
 | Organic Cortisol Control | Stress response, recovery, balance, helping the body adapt | $34 / $49 |
 | Organic Breathe Easy | Lung health, respiratory comfort, soothing herbal support | $34 / $49 |
-| Wildcrafted Irish Sea Moss | Daily mineral support, natural energy, thyroid support | _not in export — confirm_ |
+| Wildcrafted Irish Sea Moss | Daily mineral support, natural energy, thyroid support | **$40** (2 oz) — confirmed live on the storefront 2026-10-12; outside the $34/$49 architecture |
 | Muscle Salve / Poke Root Salve | Topical support, recovery, soreness, targeted body care | $25 |
 | Skincare & sun care | Ingredient integrity, skin-barrier support, hydration, lightweight wear, no greasy or synthetic feel | $20–39 |
 
@@ -47,9 +47,38 @@ Full catalog also includes Ginkgo Biloba, Gotu Kola Blend, Sleepy Time, Got
 Pain?, Oregano Extract, Elderberry Blend, Men's Health Extract, Soursop,
 Jasiel's Blend, Magnesium Mist, Castor and Jojoba oils.
 
-> **Irish Sea Moss and Cat's Claw** are named in the Copy Guide and NTK but do
-> not appear in the April export. Either the export is stale or they are
-> discontinued. **Confirm before featuring.**
+> **Irish Sea Moss** is live on the storefront at $40 (confirmed 2026-10-12 via
+> the Shopify Admin MCP). **Cat's Claw** is named in the Copy Guide and NTK but
+> was not seen in the April export or on the two collections read so far —
+> confirm before featuring.
+
+## Products with no approved framing
+
+The Copy Guide frames the hero products above and nothing else. These products
+sit in live collections and have **no recorded framing**; copy featuring them
+draws only on the client-published collection description and goes to client
+review:
+
+| Product | Collection | Collection-page language (client-published, 2026-10-12) |
+|---|---|---|
+| Organic Ginkgo Biloba | Energy & Focus | focus support, mental clarity, brain health, daily vitality |
+| Organic Sleepy Time | Sleep Support | restful sleep, nighttime calm, soothing evening routine |
+| Organic Chill Pill | Sleep Support | as above; **URL slug carries claim language** |
+| Magnesium Mist ($20, 4 oz topical) | Sleep Support | as above |
+
+Product-page URL slugs for Sleepy Time and Chill Pill contain condition words.
+Never surface a slug as text.
+
+## Storefront collections read 2026-10-12
+
+| Collection | Handle | Products | Type |
+|---|---|---|---|
+| Energy & Focus | `energy-focus` | Moringa, Liver Cleanse, Irish Sea Moss, Cortisol Control, Ginkgo Biloba | manual, best-selling sort |
+| Sleep Support | `sleep-support` | Lemon Balm, Magnesium Mist, Sleepy Time, Chill Pill | manual, best-selling sort |
+
+Collection pages show the 2 oz price only. The Klaviyo catalog API returns no
+items for this account — Shopify-integrated catalog items are not readable
+through it, so product blocks cannot be verified by an agent.
 
 ## ⚠ Two product names carry claim language
 

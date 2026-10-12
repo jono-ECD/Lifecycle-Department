@@ -48,6 +48,7 @@ Detail lives in [`context/`](context/), captured 2026-09-21:
 | Email design system | `design-system.md` + `design-tokens.json` | Captured — **pending rebrand confirmation** | _unassigned_ |
 | Account context capture | — | Done for 5 of 5 files; gaps marked inline | _unassigned_ |
 | Subscriber churn flow | `execution.flow-architecture` | **Not built — Ashton top-3 priority** | _unassigned_ |
+| Creative-production test: energy/sleep routine education | `workflows/creative-production.md` | Brief drafted — [`campaigns/2026-10-21-energy-sleep-routine/`](campaigns/2026-10-21-energy-sleep-routine/) | Jono |
 
 ## Working notes
 
