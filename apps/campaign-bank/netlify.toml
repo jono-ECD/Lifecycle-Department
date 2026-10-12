@@ -1,0 +1,12 @@
+# Netlify settings for the Campaign Bank. Set the site's base directory to this folder.
+# Everything else the site needs is an environment variable, see DEPLOY.md.
+
+[build]
+  command = "npm run build:hosted"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[functions]
+  directory = "netlify/functions"

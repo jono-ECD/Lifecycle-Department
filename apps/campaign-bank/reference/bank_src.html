@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign Bank</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --purple:oklch(52% 0.25 275);--purple-soft:oklch(96% 0.03 275);--purple-ink:oklch(40% 0.22 275);
+    --ink:oklch(20% 0.01 80);--muted:oklch(50% 0.015 80);--faint:oklch(68% 0.012 80);
+    --canvas:oklch(97.5% 0.006 80);--card:oklch(99.4% 0.003 80);--line:oklch(90% 0.01 80);--line-2:oklch(84% 0.012 80);
+    --green:oklch(93% 0.06 150);--green-ink:oklch(38% 0.11 150);
+    --amber:oklch(95% 0.06 85);--amber-ink:oklch(45% 0.12 70);
+    --gray:oklch(94% 0.005 80);--gray-ink:oklch(45% 0.01 80);
+    --ease-out:cubic-bezier(0.23,1,0.32,1);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  h1,h2,h3{font-family:Newsreader,Georgia,serif;font-weight:500;letter-spacing:-.01em;margin:0}
+  button{font:inherit;color:inherit}
+  .app{max-width:1180px;margin:0 auto;padding:0 28px 80px}
+
+  /* top */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 0 16px;border-bottom:1px solid var(--line)}
+  .top .brand{display:flex;align-items:center;gap:14px}
+  .top .mark{height:40px;width:auto;display:block}
+  .top .bt{display:flex;flex-direction:column;line-height:1.15}
+  .top .brand h1{font-size:21px}
+  .top .brand span{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .top .who{font-size:13px;color:var(--muted)}
+  .top .who b{color:var(--ink);font-weight:600}
+
+  /* headline */
+  .head{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;padding:30px 0 22px;align-items:end}
+  .head h2{font-size:34px;line-height:1.08}
+  .head h2 em{font-style:normal;color:var(--purple)}
+  .head p{margin:10px 0 0;color:var(--muted);max-width:52ch}
+
+  /* rolling window */
+  .window{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:14px 16px 12px}
+  .window .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  .window .k span{letter-spacing:0;text-transform:none;color:var(--muted);font-weight:400;font-size:12px}
+  .days{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;margin-top:10px}
+  .day{border-radius:8px;padding:6px 0 5px;text-align:center;font-size:11px;color:var(--faint);border:1px dashed var(--line-2);min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;transition:border-color 160ms ease,background-color 160ms ease}
+  .day b{font-weight:600;color:var(--muted);font-size:12px}
+  .day.today b{color:var(--purple)}
+  .day.today{border-color:var(--purple)}
+  .day.has{border-style:solid;border-color:var(--line);background:var(--purple-soft)}
+  .day .chip{width:22px;height:22px;border-radius:6px;background:var(--purple);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.02em}
+  .day.pick{cursor:pointer}
+  .day.pick:not(.has):hover{border-color:var(--purple);background:var(--purple-soft)}
+  .window .foot{margin-top:10px;font-size:12px;color:var(--muted)}
+
+  /* filters */
+  .filters{display:flex;gap:6px;flex-wrap:wrap;padding:6px 0 14px;position:sticky;top:0;background:var(--canvas);z-index:2}
+  .f{appearance:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px 6px 10px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:transform 160ms var(--ease-out),background-color 160ms ease,border-color 160ms ease}
+  .f:active{transform:scale(0.97)}
+  .f .n{min-width:20px;height:20px;border-radius:999px;background:var(--gray);color:var(--gray-ink);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px}
+  .f.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .f.on .n{background:rgba(255,255,255,.18);color:#fff}
+  .f.review:not(.on) .n{background:var(--amber);color:var(--amber-ink)}
+  .f.bank:not(.on) .n{background:var(--purple-soft);color:var(--purple-ink)}
+  .f:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+
+  /* list */
+  .list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+  .row{display:grid;grid-template-columns:64px 1fr 150px 120px 150px;gap:16px;align-items:center;padding:12px 8px 12px 4px;border-bottom:1px solid var(--line);cursor:pointer;background:transparent;transition:background-color 140ms ease,transform 160ms var(--ease-out);text-align:left;border-left:0;border-right:0;border-top:0;width:100%}
+  .row:active{transform:scale(0.995)}
+  @media (hover:hover) and (pointer:fine){.row:hover{background:var(--card)}}
+  .row:focus-visible{outline:2px solid var(--purple);outline-offset:-2px;border-radius:6px}
+  .row .th{width:64px;height:70px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#fff}
+  .row .th img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+  .row .th.none{display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:Newsreader,Georgia,serif;font-size:20px;background:var(--gray)}
+  .row .t{min-width:0}
+  .row .t b{display:block;font-family:Newsreader,Georgia,serif;font-weight:500;font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .t span{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+  .row .type{font-size:12.5px;color:var(--muted)}
+  .row .type i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0;background:var(--line-2)}
+  .row .type i.promo{background:var(--purple)}.row .type i.spot{background:oklch(70% 0.12 150)}.row .type i.edu{background:oklch(75% 0.12 85)}.row .type i.ever{background:oklch(72% 0.05 275)}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px 3px 8px;font-size:12px;font-weight:600;white-space:nowrap}
+  .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
+  .pill.draft{background:var(--gray);color:var(--gray-ink)}
+  .pill.review{background:var(--amber);color:var(--amber-ink)}
+  .pill.approved{background:var(--green);color:var(--green-ink)}
+  .pill.hold{background:var(--purple-soft);color:var(--purple-ink)}
+  .pill.scheduled{background:oklch(93% 0.05 220);color:oklch(38% 0.1 230)}
+  .pill.sent{background:transparent;color:var(--faint);border:1px solid var(--line)}
+  .row .when{font-size:12.5px;color:var(--muted);text-align:right}
+  .row .when b{display:block;color:var(--amber-ink);font-weight:600}
+  .empty{padding:36px 0;color:var(--muted);text-align:center;font-size:14px}
+  .vt{display:inline-flex;background:#EFEDE8;border-radius:999px;padding:3px;gap:2px;margin-right:6px}
+  .vt button{appearance:none;border:0;background:transparent;width:32px;height:28px;border-radius:999px;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:transform 160ms var(--ease-out),background-color 140ms ease}
+  .vt button svg{width:15px;height:15px}
+  .vt button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .vt button:active{transform:scale(0.95)}
+  .gal{columns:4;column-gap:14px;padding-top:4px}
+  .gcard{position:relative;display:block;width:100%;break-inside:avoid;margin:0 0 14px;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;cursor:pointer;box-shadow:0 2px 10px oklch(20% 0.01 80 / .05);transition:transform 200ms var(--ease-out),box-shadow 200ms ease}
+  @media (hover:hover) and (pointer:fine){.gcard:hover{transform:translateY(-2px);box-shadow:0 10px 28px oklch(20% 0.01 80 / .12)}.gcard:hover .pill{opacity:1}}
+  .gcard:active{transform:scale(0.99)}
+  .gcard:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+  .gcard img{display:block;width:100%}
+  .gcard .pill{position:absolute;top:10px;left:10px;opacity:0;transition:opacity 160ms ease;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .gcard .pill.sent{background:#fff}
+  .gph{aspect-ratio:1/1.7;display:flex;align-items:center;justify-content:center;color:var(--line-2);background:repeating-linear-gradient(0deg,#FBFAF8 0 28px,#F3F1EC 28px 29px)}
+  .gph svg{width:40px;height:40px}
+
+  /* drawer */
+  .scrim{position:fixed;inset:0;background:oklch(20% 0.01 80 / .28);opacity:0;pointer-events:none;transition:opacity 200ms ease;z-index:10}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,96vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-12px 0 40px oklch(20% 0.01 80 / .10);transform:translateX(100%);transition:transform 240ms var(--ease-out);z-index:11;display:grid;grid-template-columns:1fr 300px}
+  .drawer.on{transform:translateX(0)}
+  .preview{background:oklch(93% 0.006 80);overflow:auto;padding:22px;display:flex;justify-content:center;align-items:flex-start}
+  .preview img{width:100%;max-width:400px;border-radius:8px;box-shadow:0 8px 30px oklch(20% 0.01 80 / .12);display:block;background:#fff}
+  .preview .ph{width:100%;max-width:400px;aspect-ratio:1/1.6;border-radius:8px;border:1px dashed var(--line-2);display:flex;align-items:center;justify-content:center;color:var(--faint);text-align:center;padding:24px;font-size:13px}
+  .side{padding:22px 22px 18px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+  .side .x{align-self:flex-end;appearance:none;border:0;background:transparent;width:32px;height:32px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;transition:transform 160ms var(--ease-out),background-color 140ms ease}
+  .side .x:hover{background:var(--gray)}.side .x:active{transform:scale(0.94)}
+  .side h3{font-size:22px;line-height:1.15;margin-top:-8px}
+  .side .meta{font-size:12.5px;color:var(--muted);display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .side .meta b{font-weight:600;color:var(--ink)}
+  .side .now{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .actions{display:flex;flex-direction:column;gap:8px}
+  .b{appearance:none;border:1px solid var(--line-2);background:var(--card);border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:transform 160ms var(--ease-out),background-color 140ms ease,border-color 140ms ease}
+  .b:active{transform:scale(0.97)}
+  .b:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+  .b small{color:var(--muted);font-size:12px}
+  .b.primary{background:var(--purple);border-color:var(--purple);color:#fff}
+  .b.primary small{color:oklch(90% 0.05 275)}
+  .b.ghost{background:transparent}
+  .b:disabled{opacity:.45;cursor:default;transform:none}
+  .note{display:flex;flex-direction:column;gap:6px}
+  .note textarea{font:inherit;font-size:13.5px;border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;resize:vertical;min-height:74px;background:var(--card);color:var(--ink)}
+  .note textarea:focus{outline:2px solid var(--purple);outline-offset:1px;border-color:transparent}
+  .note .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .thread{display:flex;flex-direction:column;gap:8px;font-size:13px}
+  .msg{background:var(--gray);border-radius:10px;padding:8px 11px}
+  .msg b{font-weight:600}
+  .msg span{color:var(--muted);font-size:12px;margin-left:6px}
+  .msg.you{background:var(--purple-soft)}
+  .picker{display:none;flex-direction:column;gap:6px}
+  .picker.on{display:flex}
+  .picker .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .slot{appearance:none;border:1px solid var(--line-2);background:var(--card);border-radius:8px;padding:7px 4px;font-size:12px;cursor:pointer;transition:transform 160ms var(--ease-out),background-color 140ms ease}
+  .slot:active{transform:scale(0.96)}
+  .slot:hover{background:var(--purple-soft)}
+  .slot:disabled{opacity:.4;cursor:default}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:13.5px;transition:transform 260ms var(--ease-out),opacity 200ms ease;opacity:0;z-index:20;white-space:nowrap}
+  .toast.on{transform:translate(-50%,0);opacity:1}
+
+  @media (max-width:1100px){.gal{columns:3}}@media (max-width:700px){.gal{columns:2}}
+  @media (max-width:900px){.head{grid-template-columns:1fr}.row{grid-template-columns:56px 1fr 110px}.row .type,.row .when{display:none}.drawer{grid-template-columns:1fr}.preview{display:none}.days{grid-template-columns:repeat(7,1fr)}}
+  @media (prefers-reduced-motion:reduce){.drawer{transition:opacity 160ms ease}.drawer{transform:none;opacity:0;pointer-events:none}.drawer.on{opacity:1;pointer-events:auto}.toast{transition:opacity 160ms ease;transform:translate(-50%,0)}.f:active,.b:active,.row:active,.slot:active{transform:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><img class="mark" src="{/*MARK*/}" alt=""><div class="bt"><h1>Campaign Bank</h1><span>Blessed Botanicals</span></div></div>
+    <div class="who">Reviewing as <b>Blessed Botanicals</b> · Tuesday, September 22</div>
+  </div>
+
+  <div class="head">
+    <div>
+      <h2 id="headline"></h2>
+      <p>Every campaign ECD prepares lives here until it sends. Approve it, ask for a change, or park it for later. Approved work waits in the bank and drops into any open slot when the timing fits. Nothing is ever lost.</p>
+    </div>
+    <div class="window">
+      <div class="k">Next two weeks <span id="winsum"></span></div>
+      <div class="days" id="days"></div>
+      <div class="foot">Any open day can take an approved campaign. Pick the slot, we handle the rest.</div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="preview" id="preview"></div>
+  <div class="side">
+    <button class="x" id="close" aria-label="Close">×</button>
+    <h3 id="dtitle"></h3>
+    <div class="now"><span>Status</span><span class="pill" id="dpill"></span></div>
+    <div class="meta" id="dmeta"></div>
+    <div class="actions" id="dactions"></div>
+    <div class="picker" id="picker"><div class="k">Pick an open slot</div><div class="slots" id="slots"></div></div>
+    <div class="note"><div class="k">Note to ECD</div><textarea id="note" placeholder="What should change, or why it is on hold. Optional."></textarea></div>
+    <div class="thread" id="thread"></div>
+  </div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+const IMG = {/*IMG*/};
+const TYPES = { promo:'Promo', spot:'Product Spotlight', edu:'Education', ever:'Evergreen' };
+const STATUS = { draft:'Draft', review:'In review', approved:'Approved', hold:'On hold', scheduled:'Scheduled', sent:'Sent' };
+const ORDER = ['review','approved','hold','draft','scheduled','sent'];
+const TODAY = new Date(2026,8,22);
+
+let items = [
+  { id:1, name:'Not Sure Where to Begin?', sub:'Four best sellers, one easy routine', type:'ever', status:'review', img:'begin', since:'Sep 19', built:'Sep 18', thread:[['ECD','Sep 19','Ready for your look. Evergreen, no offer, so it can drop into any open slot.']] },
+  { id:2, name:'Born For Us, Made For You', sub:'Founder story with the everyday staples', type:'ever', status:'approved', img:'founder', since:'Sep 16', built:'Sep 15', thread:[['ECD','Sep 15','Founder story refresh, new photo.'],['You','Sep 16','Love the photo. Approved.']] },
+  { id:3, name:'Before Life Gets Busy, Stock Up On The Faves', sub:'Back to school, the daily lineup', type:'spot', status:'hold', img:'faves', since:'Sep 8', built:'Aug 27', thread:[['You','Sep 8','Hold this one while the promo runs. We will use it.']] },
+  { id:4, name:'Last Chance: Buy Any 2, Save 15%', sub:'Skin and body care, offer through Aug 2', type:'promo', status:'sent', img:'skin', since:'Aug 1', built:'Jul 29', thread:[] },
+  { id:5, name:'Labor Day Reset, EM1 to EM4', sub:'Four emails, parked when the promo was extended', type:'promo', status:'hold', img:null, since:'Sep 7', built:'Aug 28', thread:[['You','Sep 7','Promo got extended. Park these for now, we will use them.']] },
+  { id:6, name:'Turkey Tail, EM1 and EM2', sub:'Product Spotlight pair', type:'spot', status:'hold', img:null, since:'Sep 7', built:'Sep 3', thread:[['You','Sep 7','Spotlights paused for now. Keep them.']] },
+  { id:7, name:'Sun Lotion', sub:'Product Spotlight, originally Sep 17', type:'spot', status:'review', img:null, since:'Sep 12', built:'Sep 11', thread:[['ECD','Sep 12','Built for Sep 17. If the season has passed, we can hold it for spring.']] },
+  { id:8, name:'Wellness Quiz', sub:'Education, originally Sep 21', type:'edu', status:'draft', img:null, since:'Sep 20', built:'Sep 19', thread:[['ECD','Sep 20','Ready to personalize results once the quiz is reconnected to Klaviyo.']] },
+  { id:9, name:'Liver + Candida Cleanse 20% Off, EM2 (Plain Text)', sub:'Sent Sep 19', type:'promo', status:'sent', img:null, since:'Sep 19', built:'Sep 16', thread:[] },
+  { id:10, name:'64% of You Come Back. We Asked Why.', sub:'Sent Sep 12', type:'edu', status:'sent', img:null, since:'Sep 12', built:'Sep 9', thread:[] },
+];
+let filter = 'all';
+let view = 'gallery';
+let open = null;
+let scheduled = {}; // dayIndex -> item id
+
+const $ = (id) => document.getElementById(id);
+const fmt = (d) => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+function counts(){ const c={}; items.forEach(i=>c[i.status]=(c[i.status]||0)+1); return c; }
+
+function renderHead(){
+  const c = counts();
+  const n = c.review||0, a = c.approved||0, h = c.hold||0;
+  $('headline').innerHTML = n ? `<em>${n} campaign${n>1?'s':''}</em> ready for your review. ${a} approved in the bank, ${h} on hold.` : `Nothing to review right now. ${a} approved in the bank, ${h} on hold.`;
+}
+function renderDays(){
+  const el = $('days'); el.innerHTML='';
+  let filled=0;
+  for (let i=0;i<14;i++){
+    const d = new Date(TODAY); d.setDate(d.getDate()+i);
+    const div = document.createElement('div');
+    div.className = 'day' + (i===0?' today':'') + (scheduled[i]?' has':'');
+    const label = d.toLocaleDateString('en-US',{weekday:'short'}).slice(0,2);
+    div.innerHTML = `<b>${d.getDate()}</b><span>${label}</span>` + (scheduled[i] ? `<span class="chip" title="${items.find(x=>x.id===scheduled[i]).name}">${i<7?'EM':'EM'}</span>` : '');
+    if (scheduled[i]) filled++;
+    el.appendChild(div);
+  }
+  $('winsum').textContent = `${filled} scheduled, ${14-filled} open`;
+}
+function renderFilters(){
+  const c = counts(); const el=$('filters'); el.innerHTML='';
+  const vt=document.createElement('div'); vt.className='vt'; vt.innerHTML=`<button class="${view==='gallery'?'on':''}" data-v="gallery" aria-label="Gallery view"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg></button><button class="${view==='list'?'on':''}" data-v="list" aria-label="List view"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="3" width="16" height="3" rx="1.5"/><rect x="2" y="8.5" width="16" height="3" rx="1.5"/><rect x="2" y="14" width="16" height="3" rx="1.5"/></svg></button>`; vt.querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;render();}); el.appendChild(vt);
+  const all = document.createElement('button'); all.className='f'+(filter==='all'?' on':''); all.innerHTML=`All <span class="n">${items.length}</span>`; all.onclick=()=>{filter='all';render();}; el.appendChild(all);
+  const bank = document.createElement('button'); bank.className='f bank'+(filter==='bank'?' on':''); bank.innerHTML=`Bank <span class="n">${(c.approved||0)+(c.hold||0)}</span>`; bank.onclick=()=>{filter='bank';render();}; el.appendChild(bank);
+  ORDER.forEach(s=>{
+    const b=document.createElement('button'); b.className='f '+s+(filter===s?' on':''); b.innerHTML=`${STATUS[s]} <span class="n">${c[s]||0}</span>`; b.onclick=()=>{filter=s;render();}; el.appendChild(b);
+  });
+}
+function renderList(){
+  const el=$('list'); el.innerHTML='';
+  let rows = items.filter(i=>filter==='all'||(filter==='bank'?(i.status==='approved'||i.status==='hold'):i.status===filter));
+  rows.sort((a,b)=>ORDER.indexOf(a.status)-ORDER.indexOf(b.status));
+  if(!rows.length){ el.innerHTML='<div class="empty">Nothing here right now.</div>'; return; }
+  if(view==='gallery'){
+    el.className='gal';
+    rows.forEach(i=>{ const g=document.createElement('button'); g.className='gcard'; g.type='button'; g.setAttribute('aria-label',i.name); g.innerHTML = i.img ? `<img src="${IMG[i.img+'_full']}" alt="" loading="lazy"><span class="pill ${i.status}">${STATUS[i.status]}</span>` : `<div class="gph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/></svg></div><span class="pill ${i.status}">${STATUS[i.status]}</span>`; g.onclick=()=>openItem(i.id); el.appendChild(g); });
+    return;
+  }
+  el.className='list';
+  rows.forEach(i=>{
+    const r=document.createElement('button'); r.className='row'; r.type='button';
+    const th = i.img ? `<div class="th"><img src="${IMG[i.img+'_thumb']}" alt=""></div>` : `<div class="th none">${i.name[0]}</div>`;
+    const when = i.status==='review' ? `<b>Ready for review</b>since ${i.since}` : i.status==='sent' ? `Sent ${i.since}` : `Built ${i.built}`;
+    r.innerHTML = `${th}<div class="t"><b>${i.name}</b><span>${i.sub}</span></div><div class="type"><i class="${i.type}"></i>${TYPES[i.type]}</div><span class="pill ${i.status}">${STATUS[i.status]}</span><div class="when">${when}</div>`;
+    r.onclick=()=>openItem(i.id);
+    el.appendChild(r);
+  });
+}
+function render(){ renderHead(); renderDays(); renderFilters(); renderList(); if(open) renderDrawer(); }
+
+function openItem(id){ open=id; renderDrawer(); $('drawer').classList.add('on'); $('scrim').classList.add('on'); $('drawer').setAttribute('aria-hidden','false'); }
+function closeDrawer(){ $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); $('drawer').setAttribute('aria-hidden','true'); $('picker').classList.remove('on'); open=null; }
+$('close').onclick=closeDrawer; $('scrim').onclick=closeDrawer;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&open) closeDrawer(); });
+
+function renderDrawer(){
+  const i = items.find(x=>x.id===open); if(!i) return;
+  $('preview').innerHTML = i.img ? `<img src="${IMG[i.img+'_full']}" alt="">` : `<div class="ph">Preview attaches here when the design is uploaded.<br>${i.name}</div>`;
+  $('dtitle').textContent=i.name;
+  const p=$('dpill'); p.className='pill '+i.status; p.textContent=STATUS[i.status];
+  const sched = Object.entries(scheduled).find(([k,v])=>v===i.id);
+  let schedTxt=''; if(sched){ const d=new Date(TODAY); d.setDate(d.getDate()+Number(sched[0])); schedTxt=`<span>Send date</span><b>${fmt(d)}</b>`; }
+  $('dmeta').innerHTML = `<span>Type</span><b>${TYPES[i.type]}</b><span>Built</span><b>${i.built}</b><span>Last update</span><b>${i.since}</b>${schedTxt}`;
+  const a=$('dactions'); a.innerHTML='';
+  const mk=(cls,label,small,fn,dis)=>{const b=document.createElement('button');b.className='b '+cls;b.innerHTML=`<span>${label}</span><small>${small||''}</small>`;b.onclick=fn;b.disabled=!!dis;a.appendChild(b);};
+  if(i.status==='review'||i.status==='draft'){
+    mk('primary','Approve','goes to the bank',()=>setStatus(i,'approved','Approved. It is in the bank.'));
+    mk('','Request changes','with a note',()=>setStatus(i,'draft','Sent back to ECD with your note.',true));
+    mk('ghost','Put on hold','keep for later',()=>setStatus(i,'hold','On hold. Nothing is lost.'));
+  } else if(i.status==='approved'){
+    mk('primary','Schedule','pick an open slot',()=>$('picker').classList.toggle('on'));
+    mk('ghost','Put on hold','keep for later',()=>setStatus(i,'hold','On hold. Nothing is lost.'));
+  } else if(i.status==='hold'){
+    mk('primary','Back to review','I want to use this',()=>setStatus(i,'review','Back in review.'));
+    mk('','Approve as is','goes to the bank',()=>setStatus(i,'approved','Approved. It is in the bank.'));
+  } else if(i.status==='scheduled'){
+    mk('','Unschedule','back to the bank',()=>{ for(const k in scheduled) if(scheduled[k]===i.id) delete scheduled[k]; setStatus(i,'approved','Back in the bank, slot reopened.'); });
+  } else {
+    mk('ghost','Sent','no actions',()=>{},true);
+  }
+  // slots
+  const s=$('slots'); s.innerHTML='';
+  for(let k=1;k<14;k++){ const d=new Date(TODAY); d.setDate(d.getDate()+k); const b=document.createElement('button'); b.className='slot'; b.textContent=fmt(d); b.disabled=!!scheduled[k]; b.onclick=()=>{ scheduled[k]=i.id; setStatus(i,'scheduled',`Scheduled for ${fmt(d)}.`); $('picker').classList.remove('on'); }; s.appendChild(b); }
+  const t=$('thread'); t.innerHTML = i.thread.map(([w,d,m])=>`<div class="msg${w==='You'?' you':''}"><b>${w}</b><span>${d}</span><div>${m}</div></div>`).join('');
+  $('note').value='';
+}
+function setStatus(i,st,msg,needNote){
+  const n=$('note').value.trim();
+  if(needNote && !n){ toast('Add a short note so ECD knows what to change.'); $('note').focus(); return; }
+  i.status=st; i.since=fmt(TODAY);
+  if(n) i.thread.push(['You',fmt(TODAY),n]);
+  else if(st==='approved') i.thread.push(['You',fmt(TODAY),'Approved.']);
+  toast(msg); render();
+}
+let tt; function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2200); }
+render();
+</script>
+</body>
+</html>
